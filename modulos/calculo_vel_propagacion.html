@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cálculo de Velocidad de Propagación - v0.2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- MapLibre GL -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+  <!-- Proj4js para conversión UTM a WGS84 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+
+  <!-- Mapbox GL Draw para digitalizar -->
+  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css" type="text/css" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+
+  <!-- Turf.js para análisis espacial -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <!-- JSZip y toGeoJSON para procesar KMZ/KML -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: sans-serif; overflow: hidden; }
+    #map { width: 100%; height: 100%; }
+
+    .cursor-crosshair, .cursor-crosshair .maplibregl-canvas {
+      cursor: crosshair !important;
+    }
+
+    /* Panel Principal Flotante (Izquierda) */
+    .panel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(255, 255, 255, 0.97);
+      padding: 14px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+      max-width: 350px;
+      z-index: 10;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+    .panel h3 { margin: 0 0 10px 0; font-size: 15px; border-bottom: 2px solid #007bff; padding-bottom: 4px; }
+    
+    .seccion-principal {
+      background: #f0f7ff;
+      border: 1.5px solid #b8daff;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+    .seccion-principal h4 { margin: 0 0 8px 0; font-size: 13px; color: #0056b3; }
+
+    details.seccion-secundaria {
+      background: #fafafa;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+      padding: 6px 10px;
+      margin-bottom: 8px;
+    }
+    details.seccion-secundaria summary {
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #555;
+      outline: none;
+    }
+    details.seccion-secundaria[open] summary {
+      margin-bottom: 8px;
+      color: #111;
+      border-bottom: 1px dashed #ccc;
+      padding-bottom: 4px;
+    }
+
+    label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; }
+    select, input[type="file"], input[type="number"], input[type="time"], input[type="text"] {
+      width: 100%; padding: 5px 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; margin-bottom: 4px;
+    }
+    
+    button {
+      width: 100%; padding: 8px; border: none; border-radius: 4px;
+      cursor: pointer; font-weight: bold; font-size: 12px; transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+
+    .btn-medir { background: #007bff; color: white; }
+    .btn-medir.activo { background: #dc3545; }
+    .btn-limpiar { background: #6c757d; color: white; margin-top: 4px; }
+    .btn-buscar { background: #17a2b8; color: white; margin-top: 4px; }
+    .btn-dibujar { background: #e63946; color: white; flex: 1; }
+    .btn-minuta { background: #198754; color: white; padding: 6px; font-size: 11px; flex: 1; }
+    .btn-accion-icono {
+      width: 36px; height: 34px; padding: 0; display: inline-flex;
+      align-items: center; justify-content: center; font-size: 14px;
+    }
+    .btn-guardar { background: #198754; color: white; }
+    .btn-cancelar { background: #6c757d; color: white; }
+
+    .box-info {
+      margin-top: 8px; padding: 8px; background: #ffffff; border-radius: 4px;
+      font-size: 11px; line-height: 1.4; display: none; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    .contenedor-mediciones {
+      margin-top: 10px; max-height: 150px; overflow-y: auto; border-top: 1px dashed #b8daff; padding-top: 8px;
+    }
+    .item-medicion {
+      background: #ffffff; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px 8px;
+      margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .item-medicion:last-child { margin-bottom: 0; }
+    .btn-quitar-medicion {
+      background: transparent; border: none; color: #dc3545; font-weight: bold;
+      font-size: 13px; cursor: pointer; padding: 2px 6px; width: auto; margin: 0; line-height: 1;
+    }
+
+    /* BARRA SUPERIOR DERECHA */
+    .top-right-bar {
+      position: absolute;
+      top: 16px;
+      right: 60px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+    .dropdown-kmz-rapido { position: relative; }
+    .btn-dropdown-top {
+      background: rgba(255, 255, 255, 0.95);
+      color: #111;
+      border: 1px solid #ccc;
+      padding: 8px 14px;
+      border-radius: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+      font-size: 12px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .menu-dropdown-top {
+      position: absolute;
+      top: 40px;
+      right: 0;
+      background: rgba(255, 255, 255, 0.98);
+      padding: 12px 14px;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      width: 300px;
+      display: none;
+      font-size: 11px;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+    .menu-dropdown-top.activo { display: block; }
+    .menu-dropdown-top h5 { margin: 0 0 8px 0; font-size: 12px; color: #333; }
+
+    /* DESPLEGABLE INFERIOR IZQUIERDO: MAPAS BASE (ESRI) */
+    .bottom-left-basemap {
+      position: absolute;
+      bottom: 24px;
+      left: 16px;
+      z-index: 10;
+    }
+    .btn-basemap-toggle {
+      background: rgba(255, 255, 255, 0.96);
+      color: #222;
+      border: 1px solid #ccc;
+      padding: 8px 14px;
+      border-radius: 24px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.3);
+      font-size: 11px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .menu-basemap-bottom {
+      position: absolute;
+      bottom: 46px;
+      left: 0;
+      background: rgba(255, 255, 255, 0.98);
+      padding: 10px 12px;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+      width: 220px;
+      display: none;
+      font-size: 11px;
+    }
+    .menu-basemap-bottom.activo { display: block; }
+    .menu-basemap-bottom h5 { margin: 0 0 6px 0; font-size: 11px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+
+    /* Lista de polígonos guardados */
+    .item-poligono-gestion {
+      background: #fdfdfd;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+    .item-poligono-gestion:last-child { margin-bottom: 0; }
+    .row-gestion-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .row-gestion-acciones {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-accion-poligono {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      font-size: 12px;
+      line-height: 1;
+      width: auto;
+      margin: 0;
+    }
+    .btn-accion-poligono:hover { opacity: 0.7; }
+    .box-edicion-poligono {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed #cbd5e1;
+      display: none;
+    }
+
+    /* Slider Temporal Inferior */
+    .time-slider-container {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px 18px;
+      border-radius: 30px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+      width: min(650px, 90vw);
+    }
+    .slider-btn {
+      width: 34px; height: 34px; border-radius: 50%; border: none; background: #007bff;
+      color: white; font-size: 13px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; margin: 0; flex-shrink: 0;
+    }
+    .slider-track { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .slider-labels { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: #333; }
+    input[type="range"] { width: 100%; cursor: pointer; margin: 0; }
+    .badge-tiempo-activo {
+      background: #111; color: #fff; padding: 4px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: bold; white-space: nowrap;
+    }
+
+    /* Leyenda */
+    .legend {
+      position: absolute; bottom: 85px; right: 16px; background: rgba(255, 255, 255, 0.95);
+      padding: 10px 12px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      font-size: 11px; z-index: 10;
+    }
+    .legend h4 { margin: 0 0 6px 0; font-size: 11px; }
+    .legend-item { display: flex; align-items: center; margin-bottom: 3px; }
+    .color-box { width: 12px; height: 12px; margin-right: 6px; border-radius: 2px; display: inline-block; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- DESPLEGABLE INFERIOR IZQUIERDO: MAPAS BASE (ESRI) -->
+<div class="bottom-left-basemap">
+  <button id="btn-toggle-basemap" class="btn-basemap-toggle">
+    Mapa Base (Esri) <span style="font-size: 9px;">▲</span>
+  </button>
+  <div id="menu-basemap-bottom" class="menu-basemap-bottom">
+    <h5>Fondo Cartográfico</h5>
+    <select id="selector-mapa-base" style="margin-bottom: 0;">
+      <option value="esri-satelite" selected>Esri Satelital (World Imagery)</option>
+      <option value="esri-topo">Esri Topográfico (World Topo)</option>
+      <option value="esri-natgeo">Esri National Geographic</option>
+    </select>
+  </div>
+</div>
+
+<!-- BARRA SUPERIOR DERECHA: DESPLEGABLES POLÍGONOS GUARDADOS Y KMZ RÁPIDO -->
+<div class="top-right-bar">
+  <!-- 1. Desplegable de Polígonos Guardados -->
+  <div class="dropdown-kmz-rapido">
+    <button id="btn-toggle-perimetros-gestion" class="btn-dropdown-top">
+      Polígonos Guardados <span style="font-size: 10px;">▼</span>
+    </button>
+    <div id="menu-perimetros-gestion" class="menu-dropdown-top">
+      <h5>Gestión de Polígonos Guardados</h5>
+      <div id="lista-gestion-perimetros" style="max-height: 250px; overflow-y: auto;">
+        <span style="color: #666; font-size: 10px;">No hay polígonos guardados.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Desplegable KMZ Rápido -->
+  <div class="dropdown-kmz-rapido">
+    <button id="btn-toggle-kmz-rapido" class="btn-dropdown-top">
+      Perímetro KMZ <span style="font-size: 10px;">▼</span>
+    </button>
+    <div id="menu-kmz-rapido" class="menu-dropdown-top">
+      <h5>Visualizador Rápido de Perímetro IF</h5>
+      <label style="font-weight: normal; font-size: 10px; color: #666;">Selecciona o arrastra archivo KMZ o KML:</label>
+      <input type="file" id="input-kmz-rapido" accept=".kmz,.kml" style="margin-bottom: 8px;">
+
+      <div id="box-controles-kmz-rapido" style="display: none; border-top: 1px solid #eee; padding-top: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label style="margin: 0; font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+            <input type="checkbox" id="check-ver-kmz-rapido" checked style="width: auto; margin: 0;"> Ver en mapa
+          </label>
+          <button id="btn-quitar-kmz-rapido" style="width: auto; background: transparent; color: #dc3545; padding: 2px 4px; font-size: 12px; margin: 0;" title="Quitar capa">❌ Quitar</button>
+        </div>
+        <div style="font-size: 10px; color: #444; margin-bottom: 6px;" id="info-kmz-rapido-txt"></div>
+        <button id="btn-centrar-kmz-rapido" style="background: #6c757d; color: white; padding: 5px; font-size: 10px;">
+          Centrar mapa en perímetro
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Panel de Control Principal (Izquierda) -->
+<div class="panel">
+  <h3>Cálculo de Velocidad de Propagación</h3>
+
+  <!-- 1. HERRAMIENTA PRINCIPAL -->
+  <div class="seccion-principal">
+    <h4>Regla de Velocidad de Propagación</h4>
+    <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 2px;">
+      <div style="flex: 1;">
+        <label style="font-weight: normal; font-size: 10px;">Hora Inicio (A):</label>
+        <input type="time" id="regla-hora-inicio" value="14:00">
+      </div>
+      <div style="flex: 1;">
+        <label style="font-weight: normal; font-size: 10px;">Hora Fin (B):</label>
+        <input type="time" id="regla-hora-fin" value="15:00">
+      </div>
+    </div>
+    <div style="font-size: 11px; color: #333; margin-bottom: 6px;">
+      Tiempo transcurrido: <b id="etiqueta-minutos-calculados" style="color: #0056b3;">60 min</b>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+      <input type="checkbox" id="check-proyeccion" style="width: auto; margin: 0;">
+      <label for="check-proyeccion" style="font-weight: normal; font-size: 11px; margin: 0; cursor: pointer;">
+        Proyectar avance futuro (+30m, +1h, +2h) <span style="color: #666; font-size: 10px;">(experimental)</span>
+      </label>
+    </div>
+
+    <button id="btn-toggle-regla" class="btn-medir">Activar Regla (Punto A ➔ B)</button>
+    <button id="btn-limpiar-regla" class="btn-limpiar">Limpiar Todo</button>
+    <div id="resultado-medicion" class="box-info"></div>
+
+    <!-- Acciones de Minuta sin emojis -->
+    <div id="acciones-minuta" style="display: none; gap: 6px; margin-top: 8px;">
+      <button id="btn-copiar-minuta" class="btn-minuta">Copiar Minuta</button>
+      <button id="btn-descargar-minuta" class="btn-minuta">Descargar (.txt)</button>
+    </div>
+
+    <div id="contenedor-lista-mediciones" class="contenedor-mediciones" style="display: none;">
+      <label style="font-size: 10px; color: #0056b3;">Mediciones registradas:</label>
+      <div id="lista-mediciones-items"></div>
+    </div>
+  </div>
+
+  <!-- 2. HERRAMIENTAS SECUNDARIAS (COLAPSADAS) -->
+  
+  <!-- A. Perímetros Observados Históricos -->
+  <details class="seccion-secundaria" id="acordeon-perimetros">
+    <summary>Perímetros Observados (Cronología / Slider)</summary>
+    <div style="margin-top: 8px;">
+      <div style="display: flex; gap: 6px;">
+        <div style="flex: 1;">
+          <label style="font-weight: normal; font-size: 10px;">Hora:</label>
+          <input type="time" id="hora-observacion" value="14:00">
+        </div>
+        <div style="flex: 1;">
+          <label style="font-weight: normal; font-size: 10px;">Etiqueta:</label>
+          <input type="text" id="etiqueta-observacion" placeholder="Ej: Vuelo Drone">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 4px; align-items: center; margin-top: 4px;">
+        <button id="btn-trazar" class="btn-dibujar">Trazar Perímetro a Mano</button>
+        <button id="btn-guardar-dibujo" class="btn-guardar btn-accion-icono" title="Guardar perímetro" style="display: none;">💾</button>
+        <button id="btn-cancelar-dibujo" class="btn-cancelar btn-accion-icono" title="Borrar / Cancelar trazado" style="display: none;">❌</button>
+      </div>
+
+      <div id="info-trazado-actual" class="box-info" style="border-left: 4px solid #e63946;"></div>
+
+      <div style="margin-top: 8px;">
+        <label style="font-size: 10px;">Cargar KMZ/KML con registro temporal:</label>
+        <input type="file" id="input-kmz-registro" accept=".kmz,.kml">
+      </div>
+    </div>
+  </details>
+
+  <!-- B. Buscador de Coordenadas -->
+  <details class="seccion-secundaria">
+    <summary>Buscar Coordenadas (GEO / UTM)</summary>
+    <div style="margin-top: 8px;">
+      <select id="tipo-coord" style="margin-bottom: 6px;">
+        <option value="GEO">Geográficas (Latitud, Longitud)</option>
+        <option value="UTM">UTM (Huso 18S / 19S Chile)</option>
+      </select>
+
+      <div id="box-coords-geo" style="display: flex; gap: 6px;">
+        <div style="flex: 1;">
+          <label style="font-weight: normal; font-size: 10px;">Latitud:</label>
+          <input type="number" id="coord-lat" placeholder="-33.0472" step="any">
+        </div>
+        <div style="flex: 1;">
+          <label style="font-weight: normal; font-size: 10px;">Longitud:</label>
+          <input type="number" id="coord-lon" placeholder="-71.6127" step="any">
+        </div>
+      </div>
+
+      <div id="box-coords-utm" style="display: none; flex-direction: column; gap: 4px;">
+        <div style="display: flex; gap: 6px;">
+          <div style="flex: 1;">
+            <label style="font-weight: normal; font-size: 10px;">Este (X):</label>
+            <input type="number" id="utm-este" placeholder="256000" step="any">
+          </div>
+          <div style="flex: 1;">
+            <label style="font-weight: normal; font-size: 10px;">Norte (Y):</label>
+            <input type="number" id="utm-norte" placeholder="6340000" step="any">
+          </div>
+        </div>
+        <div>
+          <label style="font-weight: normal; font-size: 10px;">Huso UTM (Chile):</label>
+          <select id="utm-huso">
+            <option value="19S">Huso 19 Sur</option>
+            <option value="18S">Huso 18 Sur</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="btn-ir-coordenadas" class="btn-buscar">Centrar en Coordenadas</button>
+    </div>
+  </details>
+</div>
+
+<!-- Time Slider Inferior -->
+<div class="time-slider-container" id="contenedor-slider" style="display: none;">
+  <button id="btn-play-pause" class="slider-btn">▶</button>
+  <div class="slider-track">
+    <div class="slider-labels">
+      <span id="slider-label-inicio">--:--</span>
+      <span id="slider-label-info">0 observados</span>
+      <span id="slider-label-fin">--:--</span>
+    </div>
+    <input type="range" id="time-slider" min="0" max="0" value="0" step="1">
+  </div>
+  <div id="badge-tiempo-activo" class="badge-tiempo-activo">--:--</div>
+</div>
+
+<!-- Leyenda -->
+<div class="legend">
+  <h4>Velocidad de Propagación</h4>
+  <div class="legend-item"><span class="color-box" style="background: #008000;"></span> Lenta (&lt; 2,0 m/min)</div>
+  <div class="legend-item"><span class="color-box" style="background: #8CC63F;"></span> Media (2,0 - 10,0 m/min)</div>
+  <div class="legend-item"><span class="color-box" style="background: #FFD700;"></span> Media-Alta (10,0 - 34,0 m/min)</div>
+  <div class="legend-item"><span class="color-box" style="background: #FF8C00;"></span> Alta (34,0 - 83,0 m/min)</div>
+  <div class="legend-item"><span class="color-box" style="background: #FF0000;"></span> Extrema (&gt; 83,0 m/min)</div>
+</div>
+
+<script>
+  proj4.defs([
+    ["EPSG:32718", "+proj=utm +zone=18 +south +datum=WGS84 +units=m +no_defs"],
+    ["EPSG:32719", "+proj=utm +zone=19 +south +datum=WGS84 +units=m +no_defs"]
+  ]);
+
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        'esri-satelite-source': {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: 'Tiles &copy; Esri, Maxar'
+        },
+        'esri-topo-source': {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256
+        },
+        'esri-natgeo-source': {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256
+        },
+        'esri-reference-labels': {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256
+        }
+      },
+      layers: [
+        { id: 'capa-esri-natgeo', type: 'raster', source: 'esri-natgeo-source', layout: { 'visibility': 'none' } },
+        { id: 'capa-esri-topo', type: 'raster', source: 'esri-topo-source', layout: { 'visibility': 'none' } },
+        { id: 'capa-esri-satelite', type: 'raster', source: 'esri-satelite-source', layout: { 'visibility': 'visible' } },
+        { id: 'capa-esri-labels', type: 'raster', source: 'esri-reference-labels', layout: { 'visibility': 'visible' } }
+      ]
+    },
+    center: [-71.6127, -33.0472],
+    zoom: 12
+  });
+
+  map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+  document.getElementById('selector-mapa-base').addEventListener('change', (e) => {
+    const s = e.target.value;
+    map.setLayoutProperty('capa-esri-satelite', 'visibility', s === 'esri-satelite' ? 'visible' : 'none');
+    map.setLayoutProperty('capa-esri-topo', 'visibility', s === 'esri-topo' ? 'visible' : 'none');
+    map.setLayoutProperty('capa-esri-natgeo', 'visibility', s === 'esri-natgeo' ? 'visible' : 'none');
+  });
+
+  const btnToggleBasemap = document.getElementById('btn-toggle-basemap');
+  const menuBasemapBottom = document.getElementById('menu-basemap-bottom');
+
+  btnToggleBasemap.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menuBasemapBottom.classList.toggle('activo');
+  });
+
+  let perimetrosCronologicos = [];
+  let historialMediciones = [];
+  const coloresEtapas = ['#00f0ff', '#ffe600', '#ff8c00', '#ff3b30', '#b7094c', '#9d4edd'];
+  let datosKmzRapido = null;
+
+  function guardarEnLocalStorage() {
+    try {
+      localStorage.setItem('incendios_mediciones_v02', JSON.stringify(historialMediciones));
+      localStorage.setItem('incendios_perimetros_v02', JSON.stringify(perimetrosCronologicos));
+    } catch (e) { console.warn('Error guardando en localStorage:', e); }
+  }
+
+  function cargarDesdeLocalStorage() {
+    try {
+      const m = localStorage.getItem('incendios_mediciones_v02');
+      if (m) historialMediciones = JSON.parse(m);
+      const p = localStorage.getItem('incendios_perimetros_v02');
+      if (p) perimetrosCronologicos = JSON.parse(p);
+    } catch (e) { console.warn('Error cargando localStorage:', e); }
+  }
+
+  map.on('load', () => {
+    map.addSource('fuente-perimetros-slider', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({
+      id: 'perimetros-slider-fill', type: 'fill', source: 'fuente-perimetros-slider',
+      paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['get', 'opacidad'] }
+    });
+    map.addLayer({
+      id: 'perimetros-slider-line', type: 'line', source: 'fuente-perimetros-slider',
+      paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'grosor_borde'] }
+    });
+
+    map.addSource('fuente-linea-regla', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addSource('fuente-puntos-regla', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+
+    map.addLayer({
+      id: 'capa-linea-regla', type: 'line', source: 'fuente-linea-regla',
+      paint: { 'line-color': ['get', 'color_hex'], 'line-width': 3.5, 'line-dasharray': [2, 1] }
+    });
+
+    map.addLayer({
+      id: 'capa-etiquetas-regla', type: 'symbol', source: 'fuente-linea-regla',
+      layout: {
+        'symbol-placement': 'line-center',
+        'text-field': ['get', 'texto_etiqueta'],
+        'text-size': 12,
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-offset': [0, -1],
+        'text-allow-overlap': true,
+        'text-ignore-placement': true
+      },
+      paint: {
+        'text-color': ['get', 'color_hex'],
+        'text-halo-color': '#FFFFFF',
+        'text-halo-width': 2.5,
+        'text-halo-blur': 0.5
+      }
+    });
+
+    map.addSource('fuente-proyeccion-regla', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({
+      id: 'capa-linea-proyeccion', type: 'line', source: 'fuente-proyeccion-regla',
+      paint: { 'line-color': ['get', 'color_hex'], 'line-width': 2, 'line-dasharray': [4, 3] }
+    });
+    map.addLayer({
+      id: 'capa-etiquetas-proyeccion', type: 'symbol', source: 'fuente-proyeccion-regla',
+      layout: {
+        'text-field': ['get', 'etiqueta_tiempo'],
+        'text-size': 11,
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-offset': [0, 1],
+        'text-allow-overlap': true
+      },
+      paint: {
+        'text-color': ['get', 'color_hex'],
+        'text-halo-color': '#FFFFFF',
+        'text-halo-width': 2
+      }
+    });
+
+    map.addLayer({
+      id: 'capa-puntos-regla', type: 'circle', source: 'fuente-puntos-regla',
+      paint: { 'circle-radius': 6, 'circle-color': ['get', 'color_hex'], 'circle-stroke-width': 2, 'circle-stroke-color': '#FFFFFF' }
+    });
+
+    map.addSource('fuente-kmz-rapido', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({
+      id: 'kmz-rapido-fill', type: 'fill', source: 'fuente-kmz-rapido',
+      paint: { 'fill-color': '#ff4757', 'fill-opacity': 0.35 }
+    });
+    map.addLayer({
+      id: 'kmz-rapido-line', type: 'line', source: 'fuente-kmz-rapido',
+      paint: { 'line-color': '#ffa502', 'line-width': 3 }
+    });
+
+    cargarDesdeLocalStorage();
+    sincronizarCapasRegla();
+    actualizarListaMedicionesUI();
+    actualizarControlesSlider();
+    actualizarDropdownPoligonosGuardadosUI();
+  });
+
+  const btnToggleKmz = document.getElementById('btn-toggle-kmz-rapido');
+  const menuKmz = document.getElementById('menu-kmz-rapido');
+  const btnTogglePerimetros = document.getElementById('btn-toggle-perimetros-gestion');
+  const menuPerimetros = document.getElementById('menu-perimetros-gestion');
+
+  btnToggleKmz.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menuPerimetros.classList.remove('activo');
+    menuBasemapBottom.classList.remove('activo');
+    menuKmz.classList.toggle('activo');
+  });
+
+  btnTogglePerimetros.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menuKmz.classList.remove('activo');
+    menuBasemapBottom.classList.remove('activo');
+    menuPerimetros.classList.toggle('activo');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!menuKmz.contains(e.target) && e.target !== btnToggleKmz) menuKmz.classList.remove('activo');
+    if (!menuPerimetros.contains(e.target) && e.target !== btnTogglePerimetros) menuPerimetros.classList.remove('activo');
+    if (!menuBasemapBottom.contains(e.target) && e.target !== btnToggleBasemap) menuBasemapBottom.classList.remove('activo');
+  });
+
+  const listaGestionPerimetros = document.getElementById('lista-gestion-perimetros');
+
+  function actualizarDropdownPoligonosGuardadosUI() {
+    if (perimetrosCronologicos.length === 0) {
+      listaGestionPerimetros.innerHTML = '<span style="color: #666; font-size: 10px;">No hay polígonos guardados.</span>';
+      return;
+    }
+
+    listaGestionPerimetros.innerHTML = '';
+    perimetrosCronologicos.forEach((p) => {
+      if (p.visible === undefined) p.visible = true;
+
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'item-poligono-gestion';
+      itemDiv.id = `item-perim-${p.id}`;
+
+      itemDiv.innerHTML = `
+        <div class="row-gestion-header">
+          <label style="margin: 0; font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="checkbox" ${p.visible ? 'checked' : ''} onchange="toggleVisibilidadPerimetro('${p.id}', this.checked)" style="width: auto; margin: 0;">
+            <b>${p.hora}</b> - ${p.etiqueta} (${p.ha.toFixed(1)} ha)
+          </label>
+          <div class="row-gestion-acciones">
+            <button class="btn-accion-poligono" title="Editar" onclick="mostrarFormEdicionPerimetro('${p.id}')">✏️</button>
+            <button class="btn-accion-poligono" title="Centrar" onclick="centrarEnPerimetro('${p.id}')">🎯</button>
+            <button class="btn-accion-poligono" style="color:#dc3545;" title="Eliminar" onclick="eliminarPerimetroInstantaneo('${p.id}')">❌</button>
+          </div>
+        </div>
+        <div class="box-edicion-poligono" id="box-edit-${p.id}">
+          <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+            <input type="time" id="edit-hora-${p.id}" value="${p.hora}" style="flex: 1; margin: 0; font-size: 11px; padding: 3px;">
+            <input type="text" id="edit-etiqueta-${p.id}" value="${p.etiqueta}" style="flex: 1; margin: 0; font-size: 11px; padding: 3px;">
+          </div>
+          <div style="display: flex; gap: 4px;">
+            <button style="background: #198754; color: white; padding: 4px; font-size: 10px;" onclick="guardarEdicionPerimetro('${p.id}')">Guardar</button>
+            <button style="background: #6c757d; color: white; padding: 4px; font-size: 10px;" onclick="ocultarFormEdicionPerimetro('${p.id}')">Cancelar</button>
+          </div>
+        </div>
+      `;
+      listaGestionPerimetros.appendChild(itemDiv);
+    });
+  }
+
+  window.toggleVisibilidadPerimetro = function(id, visible) {
+    const p = perimetrosCronologicos.find(item => String(item.id) === String(id));
+    if (p) {
+      p.visible = visible;
+      guardarEnLocalStorage();
+      renderizarPasoTemporal(parseInt(slider.value));
+    }
+  };
+
+  window.centrarEnPerimetro = function(id) {
+    const p = perimetrosCronologicos.find(item => String(item.id) === String(id));
+    if (p && p.feature) {
+      const bbox = turf.bbox(p.feature);
+      map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 40 });
+    }
+  };
+
+  window.mostrarFormEdicionPerimetro = function(id) {
+    const box = document.getElementById(`box-edit-${id}`);
+    if (box) box.style.display = 'block';
+  };
+
+  window.ocultarFormEdicionPerimetro = function(id) {
+    const box = document.getElementById(`box-edit-${id}`);
+    if (box) box.style.display = 'none';
+  };
+
+  window.guardarEdicionPerimetro = function(id) {
+    const p = perimetrosCronologicos.find(item => String(item.id) === String(id));
+    if (!p) return;
+
+    const nuevaHora = document.getElementById(`edit-hora-${id}`).value;
+    const nuevaEtiqueta = document.getElementById(`edit-etiqueta-${id}`).value.trim();
+
+    if (nuevaHora) {
+      p.hora = nuevaHora;
+      const [hh, mm] = nuevaHora.split(':').map(Number);
+      p.minutosDelDia = hh * 60 + mm;
+    }
+    if (nuevaEtiqueta) p.etiqueta = nuevaEtiqueta;
+
+    perimetrosCronologicos.sort((a, b) => a.minutosDelDia - b.minutosDelDia);
+    guardarEnLocalStorage();
+    actualizarControlesSlider();
+    actualizarDropdownPoligonosGuardadosUI();
+  };
+
+  window.eliminarPerimetroInstantaneo = function(id) {
+    perimetrosCronologicos = perimetrosCronologicos.filter(item => String(item.id) !== String(id));
+    guardarEnLocalStorage();
+
+    if (perimetrosCronologicos.length === 0) {
+      map.getSource('fuente-perimetros-slider').setData({ type: 'FeatureCollection', features: [] });
+      contenedorSlider.style.display = 'none';
+    } else {
+      actualizarControlesSlider();
+    }
+    actualizarDropdownPoligonosGuardadosUI();
+  };
+
+  const inputKmzRapido = document.getElementById('input-kmz-rapido');
+  const boxControlesKmz = document.getElementById('box-controles-kmz-rapido');
+  const checkVerKmz = document.getElementById('check-ver-kmz-rapido');
+  const btnCentrarKmz = document.getElementById('btn-centrar-kmz-rapido');
+  const btnQuitarKmz = document.getElementById('btn-quitar-kmz-rapido');
+  const infoKmzTxt = document.getElementById('info-kmz-rapido-txt');
+
+  inputKmzRapido.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      let kmlTexto = '';
+      if (file.name.toLowerCase().endsWith('.kmz')) {
+        const zip = await JSZip.loadAsync(file);
+        const kmlFile = Object.keys(zip.files).find(n => n.toLowerCase().endsWith('.kml'));
+        if (!kmlFile) throw new Error('No se halló KML dentro del KMZ.');
+        kmlTexto = await zip.file(kmlFile).async('string');
+      } else {
+        kmlTexto = await file.text();
+      }
+
+      const parser = new DOMParser();
+      const kmlDoc = parser.parseFromString(kmlTexto, 'text/xml');
+      const geojson = toGeoJSON.kml(kmlDoc);
+
+      const poligonos = geojson.features.filter(f => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon'));
+      if (poligonos.length === 0) {
+        alert('El archivo no contiene geometrías de polígono válidas.');
+        return;
+      }
+
+      datosKmzRapido = geojson;
+      map.getSource('fuente-kmz-rapido').setData(datosKmzRapido);
+
+      const areaHa = turf.area(geojson) / 10000;
+      infoKmzTxt.innerHTML = `<b>Archivo:</b> ${file.name}<br><b>Superficie:</b> ${areaHa.toFixed(2)} ha`;
+      boxControlesKmz.style.display = 'block';
+
+      const bbox = turf.bbox(geojson);
+      map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 40 });
+
+    } catch (err) {
+      alert('Error al leer KMZ rápido: ' + err.message);
+    }
+  });
+
+  checkVerKmz.addEventListener('change', (e) => {
+    const vis = e.target.checked ? 'visible' : 'none';
+    map.setLayoutProperty('kmz-rapido-fill', 'visibility', vis);
+    map.setLayoutProperty('kmz-rapido-line', 'visibility', vis);
+  });
+
+  btnCentrarKmz.addEventListener('click', () => {
+    if (datosKmzRapido) {
+      const bbox = turf.bbox(datosKmzRapido);
+      map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 40 });
+    }
+  });
+
+  btnQuitarKmz.addEventListener('click', () => {
+    datosKmzRapido = null;
+    map.getSource('fuente-kmz-rapido').setData({ type: 'FeatureCollection', features: [] });
+    boxControlesKmz.style.display = 'none';
+    inputKmzRapido.value = '';
+    infoKmzTxt.innerHTML = '';
+  });
+
+  const inputHoraInicio = document.getElementById('regla-hora-inicio');
+  const inputHoraFin = document.getElementById('regla-hora-fin');
+  const etiquetaMinutos = document.getElementById('etiqueta-minutos-calculados');
+  const checkProyeccion = document.getElementById('check-proyeccion');
+
+  function calcularMinutosRango() {
+    const [h1, m1] = inputHoraInicio.value.split(':').map(Number);
+    const [h2, m2] = inputHoraFin.value.split(':').map(Number);
+    let delta = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (delta <= 0) delta += 24 * 60;
+    etiquetaMinutos.textContent = `${delta} min`;
+    return delta;
+  }
+
+  inputHoraInicio.addEventListener('change', calcularMinutosRango);
+  inputHoraFin.addEventListener('change', calcularMinutosRango);
+  checkProyeccion.addEventListener('change', () => sincronizarCapasRegla());
+
+  let modoReglaActivo = false;
+  let puntoA = null;
+  const btnRegla = document.getElementById('btn-toggle-regla');
+  const btnLimpiarRegla = document.getElementById('btn-limpiar-regla');
+  const resMedicion = document.getElementById('resultado-medicion');
+  const contListaMediciones = document.getElementById('contenedor-lista-mediciones');
+  const listaMedicionesItems = document.getElementById('lista-mediciones-items');
+  const boxAccionesMinuta = document.getElementById('acciones-minuta');
+
+  btnRegla.addEventListener('click', () => {
+    cancelarModoDibujo();
+    modoReglaActivo = !modoReglaActivo;
+    if (modoReglaActivo) {
+      btnRegla.textContent = 'Haz clic en Punto A (Origen)';
+      btnRegla.classList.add('activo');
+      map.getCanvas().style.cursor = 'crosshair';
+      puntoA = null;
+    } else {
+      desactivarModoRegla();
+    }
+  });
+
+  function desactivarModoRegla() {
+    modoReglaActivo = false;
+    btnRegla.textContent = 'Activar Regla (Punto A ➔ B)';
+    btnRegla.classList.remove('activo');
+    map.getCanvas().style.cursor = '';
+    puntoA = null;
+  }
+
+  function sincronizarCapasRegla() {
+    const lineFeatures = [];
+    const pointFeatures = [];
+    const proyFeatures = [];
+    const mostrarProyeccion = checkProyeccion.checked;
+
+    historialMediciones.forEach((m, idx) => {
+      lineFeatures.push({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: [m.coordA, m.coordB] },
+        properties: {
+          id: m.id,
+          color_hex: m.color,
+          texto_etiqueta: `#${idx + 1}: ${m.ros_m_min.toFixed(1)} m/min (${m.ros_km_h.toFixed(1)} km/h)`
+        }
+      });
+
+      pointFeatures.push({
+        type: 'Feature', geometry: { type: 'Point', coordinates: m.coordA },
+        properties: { id: m.id, color_hex: '#ffffff' }
+      });
+      pointFeatures.push({
+        type: 'Feature', geometry: { type: 'Point', coordinates: m.coordB },
+        properties: { id: m.id, color_hex: m.color }
+      });
+
+      if (mostrarProyeccion) {
+        const ptA = turf.point(m.coordA);
+        const ptB = turf.point(m.coordB);
+        const bearing = turf.bearing(ptA, ptB);
+
+        const dist30m = (m.ros_m_min * 30) / 1000;
+        const dist1h = (m.ros_m_min * 60) / 1000;
+        const dist2h = (m.ros_m_min * 120) / 1000;
+
+        const dest30m = turf.destination(ptB, dist30m, bearing, { units: 'kilometers' }).geometry.coordinates;
+        const dest1h = turf.destination(ptB, dist1h, bearing, { units: 'kilometers' }).geometry.coordinates;
+        const dest2h = turf.destination(ptB, dist2h, bearing, { units: 'kilometers' }).geometry.coordinates;
+
+        proyFeatures.push({
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [m.coordB, dest2h] },
+          properties: { color_hex: m.color }
+        });
+
+        [
+          { coord: dest30m, label: `+30m` },
+          { coord: dest1h, label: `+1h` },
+          { coord: dest2h, label: `+2h` }
+        ].forEach(h => {
+          proyFeatures.push({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: h.coord },
+            properties: { etiqueta_tiempo: h.label, color_hex: m.color }
+          });
+          pointFeatures.push({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: h.coord },
+            properties: { id: m.id, color_hex: m.color }
+          });
+        });
+      }
+    });
+
+    if (puntoA) {
+      pointFeatures.push({
+        type: 'Feature', geometry: { type: 'Point', coordinates: puntoA },
+        properties: { color_hex: '#007bff' }
+      });
+    }
+
+    map.getSource('fuente-linea-regla').setData({ type: 'FeatureCollection', features: lineFeatures });
+    map.getSource('fuente-puntos-regla').setData({ type: 'FeatureCollection', features: pointFeatures });
+    map.getSource('fuente-proyeccion-regla').setData({ type: 'FeatureCollection', features: proyFeatures });
+  }
+
+  function actualizarListaMedicionesUI() {
+    if (historialMediciones.length === 0) {
+      contListaMediciones.style.display = 'none';
+      boxAccionesMinuta.style.display = 'none';
+      listaMedicionesItems.innerHTML = '';
+      return;
+    }
+
+    contListaMediciones.style.display = 'block';
+    boxAccionesMinuta.style.display = 'flex';
+    listaMedicionesItems.innerHTML = '';
+
+    historialMediciones.forEach((m, idx) => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'item-medicion';
+      itemDiv.style.borderLeft = `3.5px solid ${m.color}`;
+      itemDiv.innerHTML = `
+        <div style="flex: 1; padding-right: 6px;">
+          <b>#${idx + 1} (${m.t1} ➔ ${m.t2}):</b> ${m.ros_m_min.toFixed(1)} m/min (${m.ros_km_h.toFixed(2)} km/h)<br>
+          <span style="color: #666; font-size: 10px;">Dist: ${m.distM.toFixed(0)} m | ${m.cat}</span>
+        </div>
+        <button class="btn-quitar-medicion" title="Quitar medición" onclick="eliminarMedicion(${m.id})">❌</button>
+      `;
+      listaMedicionesItems.appendChild(itemDiv);
+    });
+  }
+
+  window.eliminarMedicion = function(id) {
+    historialMediciones = historialMediciones.filter(m => m.id !== id);
+    guardarEnLocalStorage();
+    sincronizarCapasRegla();
+    actualizarListaMedicionesUI();
+    if (historialMediciones.length === 0) resMedicion.style.display = 'none';
+  };
+
+  btnLimpiarRegla.addEventListener('click', () => {
+    desactivarModoRegla();
+    historialMediciones = [];
+    guardarEnLocalStorage();
+    sincronizarCapasRegla();
+    actualizarListaMedicionesUI();
+    resMedicion.style.display = 'none';
+  });
+
+  function clasificarVelocidad(ros_m_min) {
+    if (ros_m_min < 2.0) return { cat: 'LENTA', color: '#008000' };
+    if (ros_m_min < 10.0) return { cat: 'MEDIA', color: '#8CC63F' };
+    if (ros_m_min < 34.0) return { cat: 'MEDIA-ALTA', color: '#FFD700' };
+    if (ros_m_min <= 83.0) return { cat: 'ALTA', color: '#FF8C00' };
+    return { cat: 'EXTREMA', color: '#FF0000' };
+  }
+
+  map.on('click', (e) => {
+    if (!modoReglaActivo) return;
+    const coords = [e.lngLat.lng, e.lngLat.lat];
+
+    if (!puntoA) {
+      puntoA = coords;
+      btnRegla.textContent = 'Haz clic en Punto B (Frente)';
+      sincronizarCapasRegla();
+    } else {
+      const puntoB = coords;
+      const minutos = calcularMinutosRango();
+      const distM = turf.distance(turf.point(puntoA), turf.point(puntoB), { units: 'meters' });
+      const ros_m_min = distM / minutos;
+      const ros_km_h = (ros_m_min * 60) / 1000;
+      const c = clasificarVelocidad(ros_m_min);
+
+      const nuevaMedicion = {
+        id: Date.now(),
+        fecha: new Date().toLocaleDateString('es-CL'),
+        t1: inputHoraInicio.value,
+        t2: inputHoraFin.value,
+        minutos: minutos,
+        distM: distM,
+        ros_m_min: ros_m_min,
+        ros_km_h: ros_km_h,
+        color: c.color,
+        cat: c.cat,
+        coordA: puntoA,
+        coordB: puntoB
+      };
+
+      historialMediciones.push(nuevaMedicion);
+      guardarEnLocalStorage();
+      sincronizarCapasRegla();
+      actualizarListaMedicionesUI();
+
+      resMedicion.style.display = 'block';
+      resMedicion.style.borderLeft = `4px solid ${c.color}`;
+      resMedicion.innerHTML = `
+        <b style="color:${c.color};">Última: ${c.cat}</b><br>
+        <b>Rango:</b> ${nuevaMedicion.t1} ➔ ${nuevaMedicion.t2} (${minutos} min)<br>
+        <b>Distancia:</b> ${distM.toFixed(0)} m | <b>Velocidad:</b> ${ros_m_min.toFixed(2)} m/min (${ros_km_h.toFixed(2)} km/h)<br>
+        <small style="color: #666;">Puedes activar la casilla para ver las proyecciones futuras (+30m, +1h, +2h)</small>
+      `;
+      desactivarModoRegla();
+    }
+  });
+
+  function generarTextoMinuta() {
+    let txt = `=========================================\n`;
+    txt += ` REPORTE OPERATIVO - VELOCIDAD DE PROPAGACIÓN\n`;
+    txt += ` Generado: ${new Date().toLocaleString('es-CL')}\n`;
+    txt += ` Total Mediciones: ${historialMediciones.length}\n`;
+    txt += `=========================================\n\n`;
+
+    historialMediciones.forEach((m, idx) => {
+      txt += `MEDICIÓN #${idx + 1}\n`;
+      txt += `-----------------------------------------\n`;
+      txt += `Horario: ${m.t1} a ${m.t2} (${m.minutos} minutos)\n`;
+      txt += `Distancia recorrida: ${(m.distM >= 1000 ? (m.distM/1000).toFixed(2) + ' km' : m.distM.toFixed(0) + ' m')}\n`;
+      txt += `Velocidad: ${m.ros_m_min.toFixed(2)} m/min (${m.ros_km_h.toFixed(2)} km/h)\n`;
+      txt += `Clasificación: Velocidad ${m.cat}\n`;
+      txt += `Punto A (Origen): Lat ${m.coordA[1].toFixed(5)}, Lon ${m.coordA[0].toFixed(5)}\n`;
+      txt += `Punto B (Frente): Lat ${m.coordB[1].toFixed(5)}, Lon ${m.coordB[0].toFixed(5)}\n\n`;
+    });
+
+    return txt;
+  }
+
+  document.getElementById('btn-copiar-minuta').addEventListener('click', () => {
+    const texto = generarTextoMinuta();
+    navigator.clipboard.writeText(texto).then(() => {
+      alert('¡Minuta copiada al portapapeles!');
+    }).catch(err => {
+      alert('Error al copiar: ' + err);
+    });
+  });
+
+  document.getElementById('btn-descargar-minuta').addEventListener('click', () => {
+    const texto = generarTextoMinuta();
+    const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `minuta_propagacion_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  const draw = new MapboxDraw({
+    displayControlsDefault: false,
+    styles: [
+      { 'id': 'gl-draw-polygon-fill', 'type': 'fill', 'paint': { 'fill-color': '#ff3b30', 'fill-opacity': 0.35 } },
+      { 'id': 'gl-draw-polygon-stroke', 'type': 'line', 'paint': { 'line-color': '#ffff00', 'line-width': 2.5 } },
+      { 'id': 'gl-draw-polygon-midpoint', 'type': 'circle', 'paint': { 'circle-radius': 4, 'circle-color': '#ffffff' } },
+      { 'id': 'gl-draw-polygon-and-line-vertex-active', 'type': 'circle', 'paint': { 'circle-radius': 5, 'circle-color': '#ff9500' } }
+    ]
+  });
+  map.addControl(draw, 'top-right');
+
+  const btnTrazar = document.getElementById('btn-trazar');
+  const btnGuardarDibujo = document.getElementById('btn-guardar-dibujo');
+  const btnCancelarDibujo = document.getElementById('btn-cancelar-dibujo');
+  const infoTrazado = document.getElementById('info-trazado-actual');
+
+  function activarCursorCruz() { map.getCanvasContainer().classList.add('cursor-crosshair'); }
+  function desactivarCursorCruz() { map.getCanvasContainer().classList.remove('cursor-crosshair'); }
+
+  btnTrazar.addEventListener('click', () => {
+    desactivarModoRegla();
+    detenerReproduccion();
+    draw.deleteAll();
+    draw.changeMode('draw_polygon');
+    activarCursorCruz();
+    btnTrazar.textContent = 'Digitalizando... (Doble clic)';
+    btnGuardarDibujo.style.display = 'none';
+    btnCancelarDibujo.style.display = 'inline-flex';
+    infoTrazado.style.display = 'none';
+  });
+
+  map.on('draw.create', (e) => {
+    desactivarCursorCruz();
+    btnTrazar.textContent = 'Trazar Perímetro a Mano';
+    const poligono = e.features[0];
+    const ha = turf.area(poligono) / 10000;
+    infoTrazado.style.display = 'block';
+    infoTrazado.innerHTML = `<b>Superficie:</b> ${ha.toFixed(2)} ha`;
+    btnGuardarDibujo.style.display = 'inline-flex';
+    btnCancelarDibujo.style.display = 'inline-flex';
+  });
+
+  btnGuardarDibujo.addEventListener('click', () => {
+    const data = draw.getAll();
+    if (!data.features.length) return;
+    registrarPerimetroEnHistorial(data.features[0]);
+    cancelarModoDibujo();
+  });
+
+  btnCancelarDibujo.addEventListener('click', () => cancelarModoDibujo());
+
+  function cancelarModoDibujo() {
+    desactivarCursorCruz();
+    draw.deleteAll();
+    draw.changeMode('simple_select');
+    btnTrazar.textContent = 'Trazar Perímetro a Mano';
+    btnGuardarDibujo.style.display = 'none';
+    btnCancelarDibujo.style.display = 'none';
+    infoTrazado.style.display = 'none';
+  }
+
+  document.getElementById('input-kmz-registro').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      let kmlTexto = '';
+      if (file.name.toLowerCase().endsWith('.kmz')) {
+        const zip = await JSZip.loadAsync(file);
+        const kmlFile = Object.keys(zip.files).find(n => n.toLowerCase().endsWith('.kml'));
+        if (!kmlFile) throw new Error('No se halló KML dentro del KMZ.');
+        kmlTexto = await zip.file(kmlFile).async('string');
+      } else {
+        kmlTexto = await file.text();
+      }
+
+      const parser = new DOMParser();
+      const kmlDoc = parser.parseFromString(kmlTexto, 'text/xml');
+      const geojson = toGeoJSON.kml(kmlDoc);
+
+      const poligonos = geojson.features.filter(f => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon'));
+      if (poligonos.length === 0) {
+        alert('El archivo KMZ/KML no contiene polígonos.');
+        return;
+      }
+
+      const poligonoObjetivo = poligonos.length === 1 ? poligonos[0] : turf.combine(turf.featureCollection(poligonos)).features[0];
+      const inputEtiqueta = document.getElementById('etiqueta-observacion');
+      if (!inputEtiqueta.value) inputEtiqueta.value = file.name.replace(/\.[^/.]+$/, "");
+
+      registrarPerimetroEnHistorial(poligonoObjetivo);
+      const bbox = turf.bbox(poligonoObjetivo);
+      map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 40 });
+      e.target.value = '';
+    } catch (err) {
+      alert('Error al leer KMZ: ' + err.message);
+    }
+  });
+
+  function registrarPerimetroEnHistorial(featurePoligono) {
+    const hora = document.getElementById('hora-observacion').value || '12:00';
+    const etiqueta = document.getElementById('etiqueta-observacion').value.trim() || `Obs-${perimetrosCronologicos.length + 1}`;
+    const ha = turf.area(featurePoligono) / 10000;
+
+    const [hh, mm] = hora.split(':').map(Number);
+    const minutosDelDia = hh * 60 + mm;
+
+    perimetrosCronologicos.push({
+      id: Date.now() + Math.random().toString(36).substr(2, 5),
+      hora: hora,
+      etiqueta: etiqueta,
+      minutosDelDia: minutosDelDia,
+      ha: ha,
+      visible: true,
+      feature: featurePoligono
+    });
+
+    perimetrosCronologicos.sort((a, b) => a.minutosDelDia - b.minutosDelDia);
+    guardarEnLocalStorage();
+    actualizarControlesSlider();
+    actualizarDropdownPoligonosGuardadosUI();
+  }
+
+  // --- TIME SLIDER ---
+  const contenedorSlider = document.getElementById('contenedor-slider');
+  const slider = document.getElementById('time-slider');
+  const labelInicio = document.getElementById('slider-label-inicio');
+  const labelFin = document.getElementById('slider-label-fin');
+  const labelInfo = document.getElementById('slider-label-info');
+  const badgeTiempo = document.getElementById('badge-tiempo-activo');
+  const btnPlay = document.getElementById('btn-play-pause');
+  let intervaloPlay = null;
+
+  function actualizarControlesSlider() {
+    if (perimetrosCronologicos.length === 0) {
+      contenedorSlider.style.display = 'none';
+      return;
+    }
+    contenedorSlider.style.display = 'flex';
+    slider.min = 0;
+    slider.max = perimetrosCronologicos.length - 1;
+    slider.value = perimetrosCronologicos.length - 1;
+
+    labelInicio.textContent = perimetrosCronologicos[0].hora;
+    labelFin.textContent = perimetrosCronologicos[perimetrosCronologicos.length - 1].hora;
+
+    renderizarPasoTemporal(perimetrosCronologicos.length - 1);
+  }
+
+  function renderizarPasoTemporal(indiceActivo) {
+    if (perimetrosCronologicos.length === 0) return;
+    const activos = perimetrosCronologicos.slice(0, indiceActivo + 1);
+    const itemActual = perimetrosCronologicos[indiceActivo];
+
+    badgeTiempo.textContent = `${itemActual.hora} - ${itemActual.etiqueta} (${itemActual.ha.toFixed(1)} ha)`;
+    labelInfo.textContent = `${indiceActivo + 1} de ${perimetrosCronologicos.length} perfiles`;
+
+    const featuresParaRender = activos
+      .filter(item => item.visible !== false)
+      .map((item, idx) => {
+        const esElMasReciente = idx === indiceActivo;
+        const color = coloresEtapas[idx % coloresEtapas.length];
+        const clon = JSON.parse(JSON.stringify(item.feature));
+        clon.properties = {
+          color: color,
+          opacidad: esElMasReciente ? 0.45 : 0.20,
+          grosor_borde: esElMasReciente ? 3.5 : 1.5
+        };
+        return clon;
+      });
+
+    map.getSource('fuente-perimetros-slider').setData({
+      type: 'FeatureCollection',
+      features: featuresParaRender
+    });
+  }
+
+  slider.addEventListener('input', (e) => {
+    detenerReproduccion();
+    renderizarPasoTemporal(parseInt(e.target.value));
+  });
+
+  btnPlay.addEventListener('click', () => {
+    if (intervaloPlay) detenerReproduccion();
+    else iniciarReproduccion();
+  });
+
+  function iniciarReproduccion() {
+    btnPlay.textContent = '⏸';
+    if (parseInt(slider.value) >= perimetrosCronologicos.length - 1) {
+      slider.value = 0;
+      renderizarPasoTemporal(0);
+    }
+    intervaloPlay = setInterval(() => {
+      let val = parseInt(slider.value);
+      if (val < perimetrosCronologicos.length - 1) {
+        val++;
+        slider.value = val;
+        renderizarPasoTemporal(val);
+      } else {
+        detenerReproduccion();
+      }
+    }, 1200);
+  }
+
+  function detenerReproduccion() {
+    if (intervaloPlay) {
+      clearInterval(intervaloPlay);
+      intervaloPlay = null;
+    }
+    btnPlay.textContent = '▶';
+  }
+
+  // --- BUSCADOR GEO / UTM ---
+  let marcadorBusqueda = new maplibregl.Marker({ color: '#17a2b8' });
+  const selectorTipoCoord = document.getElementById('tipo-coord');
+  const boxGeo = document.getElementById('box-coords-geo');
+  const boxUtm = document.getElementById('box-coords-utm');
+
+  selectorTipoCoord.addEventListener('change', (e) => {
+    if (e.target.value === 'GEO') {
+      boxGeo.style.display = 'flex';
+      boxUtm.style.display = 'none';
+    } else {
+      boxGeo.style.display = 'none';
+      boxUtm.style.display = 'flex';
+    }
+  });
+
+  document.getElementById('btn-ir-coordenadas').addEventListener('click', () => {
+    const tipo = selectorTipoCoord.value;
+    let lonFinal, latFinal;
+
+    if (tipo === 'GEO') {
+      const lat = parseFloat(document.getElementById('coord-lat').value);
+      const lon = parseFloat(document.getElementById('coord-lon').value);
+      if (isNaN(lat) || isNaN(lon)) {
+        alert('Ingresa una Latitud y Longitud válidas.');
+        return;
+      }
+      latFinal = lat;
+      lonFinal = lon;
+    } else {
+      const este = parseFloat(document.getElementById('utm-este').value);
+      const norte = parseFloat(document.getElementById('utm-norte').value);
+      const huso = document.getElementById('utm-huso').value;
+      if (isNaN(este) || isNaN(norte)) {
+        alert('Ingresa coordenadas UTM válidas.');
+        return;
+      }
+      const epsgUTM = huso === '18S' ? 'EPSG:32718' : 'EPSG:32719';
+      try {
+        const coordsWGS84 = proj4(epsgUTM, 'EPSG:4326', [este, norte]);
+        lonFinal = coordsWGS84[0];
+        latFinal = coordsWGS84[1];
+      } catch (err) {
+        alert('Error al proyectar UTM: ' + err.message);
+        return;
+      }
+    }
+
+    map.flyTo({ center: [lonFinal, latFinal], zoom: 14 });
+    marcadorBusqueda.setLngLat([lonFinal, latFinal]).addTo(map);
+
+    new maplibregl.Popup({ offset: 25 })
+      .setLngLat([lonFinal, latFinal])
+      .setHTML(`<b>Ubicación</b><br>Lat: ${latFinal.toFixed(5)}<br>Lon: ${lonFinal.toFixed(5)}`)
+      .addTo(map);
+  });
+</script>
+</body>
+</html>

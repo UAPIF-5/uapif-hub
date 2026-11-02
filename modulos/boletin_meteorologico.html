@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pronóstico Meteorológico - Región de Valparaíso</title>
+  <!-- html2canvas para captura de alta resolución -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <!-- xlsx para exportación limpia a Sheets / Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-dark: #0f172a;
+      --accent: #dc2626;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      font-size: 12px;
+    }
+
+    .container {
+      max-width: 1580px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* BARRA DE ACCIÓN */
+    .toolbar {
+      background: var(--surface);
+      padding: 12px 18px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-toggle {
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .btn-toggle.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-action {
+      background: #0f766e;
+      color: white;
+    }
+    .btn-action:hover { background: #115e59; }
+
+    .btn-clear {
+      background: #e11d48;
+      color: white;
+    }
+    .btn-clear:hover { background: #be123c; }
+
+    .btn-png { background: #15803d; color: white; }
+    .btn-png:hover { background: #166534; }
+
+    .btn-sheets { background: #0369a1; color: white; }
+    .btn-sheets:hover { background: #075985; }
+
+    /* LEYENDA TÉCNICA */
+    .legend-card {
+      background: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .legend-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    .legend-instruction {
+      font-size: 11px;
+      color: #475569;
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border-left: 3px solid #0284c7;
+    }
+
+    /* CONTENEDOR DEL BOLETÍN */
+    #boletin-render-area {
+      background: white;
+      padding: 18px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      overflow-x: auto;
+    }
+
+    .boletin-header {
+      text-align: center;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 6px;
+    }
+    .boletin-header h1 {
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #0f172a;
+    }
+    .boletin-header p {
+      font-size: 11px;
+      color: #475569;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* TABLA OFICIAL */
+    .table-weather {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      text-align: center;
+      background: white;
+      table-layout: fixed;
+    }
+
+    .table-weather th, .table-weather td {
+      border: 1px solid #0f172a;
+      padding: 5px 3px;
+      vertical-align: middle;
+    }
+
+    /* ENCABEZADOS PRINCIPALES */
+    .th-main-prov {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-weight: 800;
+      width: 170px;
+      min-width: 170px;
+    }
+    .th-main-temp {
+      background-color: #fed7aa;
+      color: #7c2d12;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .th-main-viento {
+      background-color: #cffafe;
+      color: #155e75;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .th-main-hr {
+      background-color: #fecdd3;
+      color: #9f1239;
+      font-weight: 900;
+      white-space: nowrap;
+      padding: 6px 12px !important;
+    }
+    .th-main-rojo {
+      background-color: #dc2626;
+      color: #ffffff;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    /* SIMETRÍA EXACTA: TODAS LAS COLUMNAS DIARIAS MIDEN EXACTAMENTE LO MISMO */
+    .table-weather th.col-day-1, .table-weather th.col-day-2, .table-weather th.col-day-3, .table-weather th.col-day-4,
+    .table-weather td.col-day-1, .table-weather td.col-day-2, .table-weather td.col-day-3, .table-weather td.col-day-4 {
+      width: 95px !important;
+      min-width: 95px !important;
+      max-width: 95px !important;
+      box-sizing: border-box;
+    }
+
+    .th-date {
+      background-color: #f8fafc;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 2px;
+    }
+    .th-date input {
+      font-weight: 800;
+      border: none;
+      background: transparent;
+      text-align: center;
+      width: 100%;
+      font-size: 11px;
+      outline: none;
+      color: #0f172a;
+    }
+
+    .td-provincia {
+      font-weight: 900;
+      text-transform: uppercase;
+      font-size: 10.5px;
+      background: #f8fafc;
+      text-align: center;
+      padding: 6px 4px;
+    }
+
+    /* CELDAS DE TEMPERATURA (SIN NEGRITAS) */
+    .cell-editable-inline {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0px;
+      width: 100%;
+    }
+    .input-num {
+      width: 26px;
+      border: none;
+      background: transparent;
+      font-weight: 500;
+      font-size: 11.5px;
+      text-align: right;
+      outline: none;
+      font-family: inherit;
+    }
+    .input-unit-temp {
+      font-weight: 500;
+      font-size: 11.5px;
+      user-select: none;
+    }
+
+    /* CELDAS DE HUMEDAD (COMPACTAS SIN ESPACIOS) */
+    .hr-container-clean {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0px;
+      margin: 0 auto;
+    }
+    .input-hr-part {
+      width: 17px;
+      border: none;
+      background: transparent;
+      font-weight: 500;
+      font-size: 11.5px;
+      text-align: center;
+      outline: none;
+      font-family: inherit;
+      padding: 0;
+      margin: 0;
+    }
+    .hr-unit {
+      font-weight: 500;
+      font-size: 11.5px;
+      user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* CELDAS DE VIENTO (DOS LÍNEAS CENTRADAS) */
+    .viento-cell-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 2px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .viento-top-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      text-align: center;
+    }
+    .viento-val-input {
+      width: 26px;
+      border: none;
+      background: transparent;
+      text-align: right;
+      font-weight: 500;
+      font-size: 11.5px;
+      outline: none;
+      font-family: inherit;
+    }
+    .viento-unit {
+      font-weight: 500;
+      font-size: 11.5px;
+      user-select: none;
+    }
+    .viento-select-dir {
+      border: 1px solid #94a3b8;
+      border-radius: 3px;
+      background: #ffffff;
+      font-size: 10.5px;
+      font-weight: 500;
+      padding: 1px 4px;
+      outline: none;
+      cursor: pointer;
+      color: #0f172a;
+      text-align-last: center;
+      text-align: center;
+    }
+
+    /* COLORES DE FONDOS */
+    .bg-temp-25 { background-color: #ffedd5 !important; }
+    .bg-temp-30 { background-color: #fed7aa !important; }
+    .bg-temp-35 { background-color: #ea580c !important; color: white !important; }
+    .bg-temp-35 input, .bg-temp-35 span { color: white !important; }
+
+    .bg-viento-20 { background-color: #e0f2fe !important; }
+    .bg-viento-25 { background-color: #7dd3fc !important; }
+    /* Fondo viento > 30 km/h: MANTENIDO EN EL AZUL ORIGINAL #0284c7 */
+    .bg-viento-30 { background-color: #0284c7 !important; }
+
+    /* Viento >= 30 km/h: NEGRITA EN COLOR CALIPSO / CYAN BRILLANTE */
+    .text-viento-calipso,
+    .text-viento-calipso * {
+      color: #00ffff !important;
+      font-weight: 900 !important;
+      -webkit-text-fill-color: #00ffff !important;
+    }
+    .text-viento-calipso select {
+      background-color: rgba(15, 23, 42, 0.4) !important;
+      border: 1px solid #00ffff !important;
+      color: #00ffff !important;
+    }
+    .text-viento-calipso select option {
+      background-color: #0f172a !important;
+      color: #ffffff !important;
+    }
+
+    .bg-hr-30 { background-color: #ffe4e6 !important; }
+    .bg-hr-25 { background-color: #fca5a5 !important; }
+    .bg-hr-20 { background-color: #dc2626 !important; }
+
+    /* TEXTO NEGRITA AZUL (SOLO RACHAS CONSTANTES) */
+    .text-viento-negrita {
+      color: #1d4ed8 !important;
+    }
+    .text-viento-negrita input, .text-viento-negrita span, .text-viento-negrita select {
+      color: #1d4ed8 !important;
+      font-weight: 700 !important;
+    }
+
+    /* TEXTO NEGRITA ROJA (SOLO RECUPERACIÓN NOCTURNA < 60%) */
+    .text-hr-recuperacion input, .text-hr-recuperacion span {
+      color: #b91c1c !important;
+      font-weight: 700 !important;
+    }
+
+    /* TEXTO BLANCO SOBRE FONDO ROJO (< 20% DIURNO) */
+    .bg-hr-20 input, .bg-hr-20 span {
+      color: #ffffff !important;
+    }
+    .bg-hr-20.text-hr-recuperacion input, .bg-hr-20.text-hr-recuperacion span {
+      color: #ffffff !important;
+      font-weight: 700 !important;
+    }
+
+    /* BOTÓN ROJO: TEXTO ROJO A LO LARGO */
+    .td-rojo-comunas {
+      color: #dc2626 !important;
+      font-weight: 900 !important;
+      font-size: 11px !important;
+      text-align: center;
+      background-color: #ffffff;
+      padding: 6px 8px !important;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .td-rojo-inactive {
+      color: #ef4444;
+      font-weight: 800;
+      background-color: #ffffff;
+      text-align: center;
+    }
+
+    /* MODO 3 DÍAS */
+    .mode-3days .col-day-4 {
+      display: none !important;
+    }
+
+    /* MODAL BOTÓN ROJO */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.65);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-content {
+      background: white;
+      max-width: 960px;
+      width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+    }
+    .modal-body {
+      padding: 18px;
+      overflow-y: auto;
+    }
+    .day-selector-pills {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 10px;
+    }
+    .pill {
+      padding: 6px 12px;
+      border-radius: 4px;
+      background: #e2e8f0;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .pill.active {
+      background: #dc2626;
+      color: white;
+    }
+    .comunas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 12px;
+    }
+    .provincia-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px;
+      background: #f8fafc;
+    }
+    .provincia-box h4 {
+      font-size: 11.5px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      color: #0f172a;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 4px;
+    }
+    .comuna-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      margin-bottom: 4px;
+      cursor: pointer;
+    }
+    .modal-footer {
+      padding: 12px 18px;
+      border-top: 1px solid #cbd5e1;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      background: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- BARRA DE ACCIÓN -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span style="font-weight: 800; color: #1e293b;">Horizonte:</span>
+      <button class="btn btn-toggle active" id="btn-3days" onclick="setHorizonte(3)">3 Días</button>
+      <button class="btn btn-toggle" id="btn-4days" onclick="setHorizonte(4)">4 Días</button>
+
+      <span style="border-left: 1px solid #cbd5e1; height: 22px; margin: 0 4px;"></span>
+
+      <button class="btn btn-action" onclick="openModalRojo()">
+        Configurar Botón Rojo por Provincia
+      </button>
+
+      <button class="btn btn-toggle" onclick="recalcularFechasHoy()">
+        Actualizar Fechas a Hoy
+      </button>
+
+      <button class="btn btn-clear" onclick="eliminarTodo()">
+        Eliminar Todo
+      </button>
+    </div>
+
+    <div class="toolbar-right">
+      <button class="btn btn-sheets" onclick="exportToSheetsExcel()">
+        Descargar Sheets / Excel
+      </button>
+      <button class="btn btn-png" onclick="exportToPNG()">
+        Descargar PNG Oficial
+      </button>
+    </div>
+  </div>
+
+  <!-- LEYENDA TÉCNICA -->
+  <div class="legend-card">
+    <div class="legend-row">
+      <div class="legend-group">
+        <strong>Temp (°C):</strong>
+        <span class="legend-item bg-temp-25">> 25°</span>
+        <span class="legend-item bg-temp-30">> 30°</span>
+        <span class="legend-item bg-temp-35">> 35°</span>
+      </div>
+      <div class="legend-group">
+        <strong>Viento (km/h):</strong>
+        <span class="legend-item bg-viento-20">> 20 km/h</span>
+        <span class="legend-item bg-viento-25">> 25 km/h</span>
+        <span class="legend-item bg-viento-30">> 30 km/h</span>
+      </div>
+      <div class="legend-group">
+        <strong>Humedad (%):</strong>
+        <span class="legend-item bg-hr-30">< 30%</span>
+        <span class="legend-item bg-hr-25">< 25%</span>
+        <span class="legend-item bg-hr-20" style="color:white;">< 20%</span>
+      </div>
+      <div class="legend-group">
+        <span class="legend-item text-viento-negrita" style="background:#f1f5f9; border:1px solid #bfdbfe;">NEGRITA AZUL</span>
+        <span>= Rachas constantes</span>
+      </div>
+      <div class="legend-group">
+        <span class="legend-item" style="color:#00ffff; font-weight:900; background:#0284c7; border:1px solid #0f172a;">NEGRITA CALIPSO</span>
+        <span>= Viento >= 30 km/h</span>
+      </div>
+      <div class="legend-group">
+        <span class="legend-item" style="color:#b91c1c; font-weight:700; background:#f1f5f9; border:1px solid #fecdd3;">NEGRITA ROJA</span>
+        <span>= < 60% Recuperación nocturna</span>
+      </div>
+    </div>
+    <div class="legend-instruction">
+      * <strong>Reglas de formato:</strong> Temperatura no lleva negrita. Viento lleva negrita azul solo al activar rachas con doble clic. Viento >= 30 km/h lleva negrita en color calipso sobre fondo azul. Humedad no lleva espacios después de '/' y se destaca en negrita roja si la recuperación es &lt; 60% nocturna, o en blanco si la humedad es &lt; 20% (fondo rojo).
+    </div>
+  </div>
+
+  <!-- TABLA RENDERIZABLE -->
+  <div id="boletin-render-area">
+    <div class="boletin-header">
+      <h1>PRONÓSTICO METEOROLÓGICO - REGIÓN DE VALPARAÍSO</h1>
+      <p id="subtitulo-horizonte">Pronóstico detallado regional.</p>
+    </div>
+
+    <table class="table-weather" id="main-table">
+      <thead>
+        <tr>
+          <th rowspan="2" class="th-main-prov">PROVINCIAS</th>
+          <th colspan="4" class="th-main-temp header-block-temp">TEMPERATURA (°C)</th>
+          <th colspan="4" class="th-main-viento header-block-viento">VELOCIDAD Y COMPONENTE DE VIENTO</th>
+          <th colspan="4" class="th-main-hr header-block-hr">HR% (MÍNIMA (DÍA) / MÁXIMA (RECUPERACIÓN NOCHE))</th>
+          <th colspan="4" class="th-main-rojo header-block-rojo">BOTÓN ROJO</th>
+        </tr>
+        <tr id="fechas-row">
+          <!-- Temp -->
+          <th class="th-date col-day-1"><input id="date-input-1" onchange="syncDateManual(1, this.value)"></th>
+          <th class="th-date col-day-2"><input id="date-input-2" onchange="syncDateManual(2, this.value)"></th>
+          <th class="th-date col-day-3"><input id="date-input-3" onchange="syncDateManual(3, this.value)"></th>
+          <th class="th-date col-day-4"><input id="date-input-4" onchange="syncDateManual(4, this.value)"></th>
+
+          <!-- Viento -->
+          <th class="th-date col-day-1 date-sync-1"></th>
+          <th class="th-date col-day-2 date-sync-2"></th>
+          <th class="th-date col-day-3 date-sync-3"></th>
+          <th class="th-date col-day-4 date-sync-4"></th>
+
+          <!-- HR -->
+          <th class="th-date col-day-1 date-sync-1"></th>
+          <th class="th-date col-day-2 date-sync-2"></th>
+          <th class="th-date col-day-3 date-sync-3"></th>
+          <th class="th-date col-day-4 date-sync-4"></th>
+
+          <!-- Botón Rojo -->
+          <th class="th-date col-day-1 date-sync-1"></th>
+          <th class="th-date col-day-2 date-sync-2"></th>
+          <th class="th-date col-day-3 date-sync-3"></th>
+          <th class="th-date col-day-4 date-sync-4"></th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <!-- Render dinámico -->
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- MODAL BOTÓN ROJO AGRUPADO POR PROVINCIAS OFICIALES -->
+<div class="modal-overlay" id="modal-rojo">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 style="color:#0f172a; font-size:14px; font-weight:800;">Visor de Botón Rojo - Selección por Comunas de cada Provincia</h3>
+      <button onclick="closeModalRojo()" style="background:none; border:none; font-size:18px; cursor:pointer;">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="day-selector-pills">
+        <div class="pill active" id="pill-dia-1" onclick="selectModalDay(1)">Día 1 (<span class="date-txt-1"></span>)</div>
+        <div class="pill" id="pill-dia-2" onclick="selectModalDay(2)">Día 2 (<span class="date-txt-2"></span>)</div>
+        <div class="pill" id="pill-dia-3" onclick="selectModalDay(3)">Día 3 (<span class="date-txt-3"></span>)</div>
+        <div class="pill" id="pill-dia-4" onclick="selectModalDay(4)">Día 4 (<span class="date-txt-4"></span>)</div>
+      </div>
+
+      <div class="comunas-grid" id="comunas-container">
+        <!-- Checks por provincia oficial -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-toggle" onclick="closeModalRojo()">Cerrar</button>
+      <button class="btn btn-action" onclick="aplicarRojoModal()">Guardar y Actualizar Tabla</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ROSA DE LOS VIENTOS COMPLETA
+const rosaDeLosVientos = [
+  '-', 'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 
+  'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
+  'ENE-SSW', 'SE-WSW', 'ESE-SW', 'E-W'
+];
+
+// MATRIZ DE 10 SECTORES
+const sectoresData = [
+  { id: 'petorca', nombre: 'PETORCA', data: {
+      temp: ['18', '16', '17', '23'],
+      vientoVal: ['12', '15', '13', '7'],
+      vientoDir: ['SW', 'SW', 'SW', 'ENE-SSW'],
+      vientoRachas: [false, false, false, false],
+      hrMin: ['26', '36', '34', '10'],
+      hrMax: ['66', '77', '60', '27']
+  }},
+  { id: 'petorca_la_ligua', nombre: 'PETORCA (LA LIGUA)', data: {
+      temp: ['15', '14', '17', '22'],
+      vientoVal: ['11', '10', '12', '10'],
+      vientoDir: ['W', 'W', 'WSW', 'W'],
+      vientoRachas: [false, false, true, true],
+      hrMin: ['66', '71', '57', '41'],
+      hrMax: ['90', '89', '75', '71']
+  }},
+  { id: 'san_felipe', nombre: 'SAN FELIPE DE ACONCAGUA', data: {
+      temp: ['20', '17', '17', '22'],
+      vientoVal: ['11', '13', '9', '6'],
+      vientoDir: ['SW', 'SW', 'SW', 'SSW'],
+      vientoRachas: [false, false, false, false],
+      hrMin: ['20', '32', '32', '11'],
+      hrMax: ['63', '82', '60', '23']
+  }},
+  { id: 'los_andes', nombre: 'LOS ANDES', data: {
+      temp: ['23', '20', '19', '25'],
+      vientoVal: ['10', '11', '10', '9'],
+      vientoDir: ['WSW', 'W', 'WSW', 'WSW'],
+      vientoRachas: [false, false, false, false],
+      hrMin: ['16', '23', '31', '10'],
+      hrMax: ['40', '59', '54', '20']
+  }},
+  { id: 'quillota', nombre: 'QUILLOTA', data: {
+      temp: ['20', '17', '20', '27'],
+      vientoVal: ['10', '10', '9', '9'],
+      vientoDir: ['W', 'W', 'W', 'E-W'],
+      vientoRachas: [false, false, false, false],
+      hrMin: ['41', '57', '39', '17'],
+      hrMax: ['93', '94', '68', '41']
+  }},
+  { id: 'marga_marga', nombre: 'MARGA MARGA', data: {
+      temp: ['19', '17', '20', '26'],
+      vientoVal: ['13', '12', '11', '10'],
+      vientoDir: ['NW', 'NNW', 'W', 'SE-WSW'],
+      vientoRachas: [false, false, true, false],
+      hrMin: ['45', '57', '39', '19'],
+      hrMax: ['92', '93', '64', '41']
+  }},
+  { id: 'san_antonio_costa', nombre: 'SAN ANTONIO COSTA', data: {
+      temp: ['12', '12', '14', '17'],
+      vientoVal: ['14', '13', '12', '14'],
+      vientoDir: ['W', 'WSW', 'WSW', 'ESE-SW'],
+      vientoRachas: [false, true, false, true],
+      hrMin: ['57', '64', '50', '38'],
+      hrMax: ['91', '89', '71', '56']
+  }},
+  { id: 'san_antonio_interior', nombre: 'SAN ANTONIO INTERIOR', data: {
+      temp: ['18', '15', '19', '24'],
+      vientoVal: ['11', '12', '9', '11'],
+      vientoDir: ['W', 'W', 'WSW', 'ESE-SW'],
+      vientoRachas: [true, true, false, false],
+      hrMin: ['44', '56', '41', '23'],
+      hrMax: ['93', '93', '67', '43']
+  }},
+  { id: 'valparaiso_costa', nombre: 'VALPARAÍSO COSTA', data: {
+      temp: ['14', '14', '16', '23'],
+      vientoVal: ['13', '13', '15', '16'],
+      vientoDir: ['W', 'WSW', 'SW', 'SE-SSW'],
+      vientoRachas: [true, true, true, true],
+      hrMin: ['62', '66', '53', '36'],
+      hrMax: ['89', '88', '68', '59']
+  }},
+  { id: 'valparaiso_interior', nombre: 'VALPARAÍSO INTERIOR', data: {
+      temp: ['19', '16', '19', '25'],
+      vientoVal: ['12', '12', '11', '11'],
+      vientoDir: ['WSW', 'WSW', 'SW', 'SE-SSW'],
+      vientoRachas: [false, false, true, true],
+      hrMin: ['41', '56', '36', '20'],
+      hrMax: ['92', '94', '65', '39']
+  }}
+];
+
+// PROVINCIAS OFICIALES CONTINENTALES
+const comunasPorProvinciaOficial = {
+  'PROVINCIA DE VALPARAÍSO': ['Valparaíso', 'Viña del Mar', 'Concón', 'Quintero', 'Puchuncaví', 'Casablanca'],
+  'PROVINCIA DE PETORCA': ['La Ligua', 'Cabildo', 'Papudo', 'Petorca', 'Zapallar'],
+  'PROVINCIA DE SAN ANTONIO': ['San Antonio', 'Santo Domingo', 'Cartagena', 'El Tabo', 'El Quisco', 'Algarrobo'],
+  'PROVINCIA DE QUILLOTA': ['Quillota', 'La Calera', 'Hijuelas', 'La Cruz', 'Nogales'],
+  'PROVINCIA DE SAN FELIPE': ['San Felipe', 'Catemu', 'Llaillay', 'Panquehue', 'Putaendo', 'Santa María'],
+  'PROVINCIA DE LOS ANDES': ['Los Andes', 'Calle Larga', 'Rinconada', 'San Esteban'],
+  'PROVINCIA DE MARGA MARGA': ['Quilpué', 'Villa Alemana', 'Limache', 'Olmué']
+};
+
+let dates = [];
+let currentHorizonte = 3;
+let currentModalDay = 1;
+let botonRojoState = { 1: {}, 2: {}, 3: {}, 4: {} };
+
+// INICIALIZACIÓN AUTOMÁTICA DE FECHAS
+function initDatesAutomatic() {
+  const today = new Date();
+  dates = [];
+  for (let i = 0; i < 4; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dayStr = String(d.getDate()).padStart(2, '0');
+    const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+    const yearStr = d.getFullYear();
+    dates.push(`${dayStr}/${monthStr}/${yearStr}`);
+  }
+  updateDateUI();
+}
+
+function recalcularFechasHoy() {
+  initDatesAutomatic();
+  renderTable();
+}
+
+function updateDateUI() {
+  for (let i = 1; i <= 4; i++) {
+    const input = document.getElementById(`date-input-${i}`);
+    if (input) input.value = dates[i - 1];
+    document.querySelectorAll(`.date-sync-${i}`).forEach(el => el.innerText = dates[i - 1]);
+    const pillSpan = document.querySelector(`.date-txt-${i}`);
+    if (pillSpan) pillSpan.innerText = dates[i - 1].slice(0, 5);
+  }
+}
+
+function syncDateManual(dayIndex, value) {
+  dates[dayIndex - 1] = value;
+  document.querySelectorAll(`.date-sync-${dayIndex}`).forEach(el => el.innerText = value);
+  const pillSpan = document.querySelector(`.date-txt-${dayIndex}`);
+  if (pillSpan) pillSpan.innerText = value.slice(0, 5);
+}
+
+// ELIMINAR TODO
+function eliminarTodo() {
+  sectoresData.forEach(sec => {
+    for (let d = 0; d < 4; d++) {
+      sec.data.temp[d] = '';
+      sec.data.vientoVal[d] = '';
+      sec.data.vientoDir[d] = '-';
+      sec.data.vientoRachas[d] = false;
+      sec.data.hrMin[d] = '';
+      sec.data.hrMax[d] = '';
+    }
+  });
+  botonRojoState = { 1: {}, 2: {}, 3: {}, 4: {} };
+  renderTable();
+}
+
+// EVALUACIONES DE FONDOS
+function getTempBgClass(val) {
+  const n = parseInt(val, 10);
+  if (isNaN(n)) return '';
+  if (n >= 35) return 'bg-temp-35';
+  if (n >= 30) return 'bg-temp-30';
+  if (n >= 25) return 'bg-temp-25';
+  return '';
+}
+
+function getVientoBgClass(val) {
+  const n = parseInt(val, 10);
+  if (isNaN(n)) return '';
+  if (n >= 30) return 'bg-viento-30';
+  if (n >= 25) return 'bg-viento-25';
+  if (n >= 20) return 'bg-viento-20';
+  return '';
+}
+
+function getHRBgClass(minVal) {
+  const n = parseInt(minVal, 10);
+  if (isNaN(n)) return '';
+  if (n < 20) return 'bg-hr-20';
+  if (n < 25) return 'bg-hr-25';
+  if (n < 30) return 'bg-hr-30';
+  return '';
+}
+
+function isHRRecuperacionCritica(maxVal) {
+  const n = parseInt(maxVal, 10);
+  if (isNaN(n)) return false;
+  return n < 60;
+}
+
+function getHexForBg(bgClass) {
+  if (bgClass === 'bg-temp-25') return '#ffedd5';
+  if (bgClass === 'bg-temp-30') return '#fed7aa';
+  if (bgClass === 'bg-temp-35') return '#ea580c';
+  if (bgClass === 'bg-viento-20') return '#e0f2fe';
+  if (bgClass === 'bg-viento-25') return '#7dd3fc';
+  if (bgClass === 'bg-viento-30') return '#0284c7'; // FONDO ORIGINAL AZUL
+  if (bgClass === 'bg-hr-30') return '#ffe4e6';
+  if (bgClass === 'bg-hr-25') return '#fca5a5';
+  if (bgClass === 'bg-hr-20') return '#dc2626';
+  return '#ffffff';
+}
+
+// RENDERIZADO DE TABLA EN PANTALLA
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+
+  sectoresData.forEach((sec, sIdx) => {
+    const tr = document.createElement('tr');
+    let html = `<td class="td-provincia">${sec.nombre}</td>`;
+
+    // 1. Celdas Temperatura
+    for (let d = 0; d < 4; d++) {
+      const val = sec.data.temp[d] || '';
+      const bgCls = getTempBgClass(val);
+      html += `
+        <td class="col-day-${d+1} ${bgCls}">
+          <div class="cell-editable-inline">
+            <input type="text" class="input-num" value="${val}" 
+                   placeholder="--"
+                   onchange="updateTempValue(${sIdx}, ${d}, this.value)"><span class="input-unit-temp">°C</span>
+          </div>
+        </td>`;
+    }
+
+    // 2. Celdas Viento (Dos líneas centradas, con negrita calipso si >= 30 km/h)
+    for (let d = 0; d < 4; d++) {
+      const val = sec.data.vientoVal[d] || '';
+      const dir = sec.data.vientoDir[d] || '-';
+      const bgCls = getVientoBgClass(val);
+      const isRachas = sec.data.vientoRachas[d] === true;
+      const numViento = parseInt(val, 10);
+      const isCalipso = !isNaN(numViento) && numViento >= 30;
+
+      let vientoColorCls = '';
+      if (isCalipso) {
+        vientoColorCls = 'text-viento-calipso';
+      } else if (isRachas) {
+        vientoColorCls = 'text-viento-negrita';
+      }
+
+      let optionsHtml = '';
+      rosaDeLosVientos.forEach(p => {
+        optionsHtml += `<option value="${p}" ${p === dir ? 'selected' : ''}>${p}</option>`;
+      });
+
+      html += `
+        <td class="col-day-${d+1} ${bgCls} ${vientoColorCls}" 
+            title="Doble clic para alternar rachas constantes (negrita azul)"
+            ondblclick="toggleVientoRacha(${sIdx}, ${d})">
+          <div class="viento-cell-container ${vientoColorCls}">
+            <div class="viento-top-row">
+              <input type="text" class="viento-val-input" value="${val}" 
+                     placeholder="--"
+                     onchange="updateVientoVal(${sIdx}, ${d}, this.value)"><span class="viento-unit">km/h</span>
+            </div>
+            <select class="viento-select-dir" onchange="updateVientoDir(${sIdx}, ${d}, this.value)">
+              ${optionsHtml}
+            </select>
+          </div>
+        </td>`;
+    }
+
+    // 3. Celdas Humedad Relativa (Compacto sin espacios: ej. 26%/66%)
+    for (let d = 0; d < 4; d++) {
+      const minVal = sec.data.hrMin[d] || '';
+      const maxVal = sec.data.hrMax[d] || '';
+      const bgCls = getHRBgClass(minVal);
+      const isCrit = isHRRecuperacionCritica(maxVal);
+      const textCls = isCrit ? 'text-hr-recuperacion' : '';
+
+      html += `
+        <td class="col-day-${d+1} ${bgCls} ${textCls}">
+          <div class="hr-container-clean">
+            <input type="text" class="input-hr-part" maxlength="2" value="${minVal}" placeholder="--"
+                   onchange="updateHRMin(${sIdx}, ${d}, this.value)"><span class="hr-unit">%/</span><input type="text" class="input-hr-part" maxlength="2" value="${maxVal}" placeholder="--"
+                   onchange="updateHRMax(${sIdx}, ${d}, this.value)"><span class="hr-unit">%</span>
+          </div>
+        </td>`;
+    }
+
+    // 4. Celdas Botón Rojo
+    for (let d = 0; d < 4; d++) {
+      const comunasActivas = getComunasParaFila(sec, d + 1);
+      if (comunasActivas.length > 0) {
+        html += `<td class="col-day-${d+1} td-rojo-comunas">${comunasActivas.join(', ')}</td>`;
+      } else {
+        html += `<td class="col-day-${d+1} td-rojo-inactive">-</td>`;
+      }
+    }
+
+    tr.innerHTML = html;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateTempValue(sIdx, d, val) {
+  sectoresData[sIdx].data.temp[d] = val.trim();
+  renderTable();
+}
+
+function updateVientoVal(sIdx, d, val) {
+  sectoresData[sIdx].data.vientoVal[d] = val.trim();
+  renderTable();
+}
+
+function updateVientoDir(sIdx, d, val) {
+  sectoresData[sIdx].data.vientoDir[d] = val;
+  renderTable();
+}
+
+function toggleVientoRacha(sIdx, d) {
+  sectoresData[sIdx].data.vientoRachas[d] = !sectoresData[sIdx].data.vientoRachas[d];
+  renderTable();
+}
+
+function updateHRMin(sIdx, d, val) {
+  sectoresData[sIdx].data.hrMin[d] = val.trim();
+  renderTable();
+}
+
+function updateHRMax(sIdx, d, val) {
+  sectoresData[sIdx].data.hrMax[d] = val.trim();
+  renderTable();
+}
+
+function getComunasParaFila(sec, day) {
+  const marcas = botonRojoState[day] || {};
+  const activas = Object.keys(marcas).filter(c => marcas[c] === true);
+
+  if (sec.id === 'petorca_la_ligua') return activas.filter(c => c === 'La Ligua');
+  if (sec.id === 'petorca') return activas.filter(c => ['Cabildo', 'Papudo', 'Petorca', 'Zapallar'].includes(c));
+  if (sec.id === 'san_felipe') return activas.filter(c => ['San Felipe', 'Catemu', 'Llaillay', 'Panquehue', 'Putaendo', 'Santa María'].includes(c));
+  if (sec.id === 'los_andes') return activas.filter(c => ['Los Andes', 'Calle Larga', 'Rinconada', 'San Esteban'].includes(c));
+  if (sec.id === 'quillota') return activas.filter(c => ['Quillota', 'La Calera', 'Hijuelas', 'La Cruz', 'Nogales'].includes(c));
+  if (sec.id === 'marga_marga') return activas.filter(c => ['Quilpué', 'Villa Alemana', 'Limache', 'Olmué'].includes(c));
+  if (sec.id === 'valparaiso_costa') return activas.filter(c => ['Valparaíso', 'Viña del Mar', 'Concón', 'Quintero', 'Puchuncaví'].includes(c));
+  if (sec.id === 'valparaiso_interior') return activas.filter(c => c === 'Casablanca');
+  if (sec.id === 'san_antonio_costa') return activas.filter(c => ['San Antonio', 'Cartagena', 'El Tabo', 'El Quisco', 'Algarrobo'].includes(c));
+  if (sec.id === 'san_antonio_interior') return activas.filter(c => c === 'Santo Domingo');
+  return [];
+}
+
+function setHorizonte(dias) {
+  currentHorizonte = dias;
+  const container = document.getElementById('boletin-render-area');
+  const btn3 = document.getElementById('btn-3days');
+  const btn4 = document.getElementById('btn-4days');
+  const sub = document.getElementById('subtitulo-horizonte');
+
+  const headers = document.querySelectorAll('.table-weather thead tr:first-child th:not(.th-main-prov)');
+  headers.forEach(th => th.colSpan = dias);
+
+  if (dias === 3) {
+    container.classList.add('mode-3days');
+    btn3.classList.add('active');
+    btn4.classList.remove('active');
+    sub.innerText = 'Pronóstico detallado regional.';
+  } else {
+    container.classList.remove('mode-3days');
+    btn4.classList.add('active');
+    btn3.classList.remove('active');
+    sub.innerText = 'Pronóstico detallado regional.';
+  }
+}
+
+function openModalRojo() {
+  renderModalComunas();
+  document.getElementById('modal-rojo').classList.add('open');
+}
+
+function closeModalRojo() {
+  document.getElementById('modal-rojo').classList.remove('open');
+}
+
+function selectModalDay(day) {
+  currentModalDay = day;
+  document.querySelectorAll('.day-selector-pills .pill').forEach((p, idx) => {
+    p.classList.toggle('active', (idx + 1) === day);
+  });
+  renderModalComunas();
+}
+
+function renderModalComunas() {
+  const cont = document.getElementById('comunas-container');
+  cont.innerHTML = '';
+
+  Object.entries(comunasPorProvinciaOficial).forEach(([provincia, comunas]) => {
+    const box = document.createElement('div');
+    box.className = 'provincia-box';
+    let boxHtml = `<h4>${provincia}</h4>`;
+    comunas.forEach(com => {
+      const isChecked = botonRojoState[currentModalDay][com] ? 'checked' : '';
+      boxHtml += `
+        <label class="comuna-label">
+          <input type="checkbox" ${isChecked} onchange="toggleComuna('${com}', this.checked)">
+          ${com}
+        </label>
+      `;
+    });
+    box.innerHTML = boxHtml;
+    cont.appendChild(box);
+  });
+}
+
+function toggleComuna(comuna, isChecked) {
+  botonRojoState[currentModalDay][comuna] = isChecked;
+}
+
+function aplicarRojoModal() {
+  renderTable();
+  if (currentHorizonte === 3) setHorizonte(3);
+  closeModalRojo();
+}
+
+/* ==========================================================================
+   CONSTRUCCIÓN DE TABLA LIMPIA Y ROBUSTA PARA EXPORTACIÓN PNG Y SHEETS
+   ========================================================================== */
+function buildExportTableElement() {
+  const clone = document.createElement('div');
+  clone.style.padding = '20px';
+  clone.style.background = '#ffffff';
+  clone.style.fontFamily = "'Segoe UI', system-ui, -apple-system, sans-serif";
+  clone.style.webkitFontSmoothing = 'antialiased';
+  clone.style.textRendering = 'geometricPrecision';
+  clone.style.webkitFontSmoothing = 'antialiased';
+  clone.style.textRendering = 'geometricPrecision';
+
+  // Encabezado
+  const headerHtml = `
+    <div style="text-align: center; margin-bottom: 12px; border-bottom: 2px solid #0f172a; padding-bottom: 6px;">
+      <h1 style="font-size: 17px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; color: #0f172a; margin:0;">PRONÓSTICO METEOROLÓGICO - REGIÓN DE VALPARAÍSO</h1>
+      <p style="font-size: 11px; color: #475569; font-weight: 600; margin-top: 2px;">Pronóstico detallado regional.</p>
+    </div>
+  `;
+  clone.innerHTML = headerHtml;
+
+  const table = document.createElement('table');
+  table.className = 'table-weather';
+  table.style.width = '100%';
+  table.style.borderCollapse = 'collapse';
+  table.style.fontSize = '11px';
+  table.style.textAlign = 'center';
+  table.style.background = 'white';
+  table.style.tableLayout = 'fixed';
+
+  // Fila 1 de encabezados
+  const thead = document.createElement('thead');
+  const tr1 = document.createElement('tr');
+  tr1.innerHTML = `
+    <th rowspan="2" class="th-main-prov" style="background:#f8fafc; border:1px solid #0f172a; padding:5px 3px; font-weight:800; width:170px;">PROVINCIAS</th>
+    <th colspan="${currentHorizonte}" class="th-main-temp" style="background:#fed7aa; color:#7c2d12; border:1px solid #0f172a; padding:5px 3px; font-weight:900; white-space:nowrap;">TEMPERATURA (°C)</th>
+    <th colspan="${currentHorizonte}" class="th-main-viento" style="background:#cffafe; color:#155e75; border:1px solid #0f172a; padding:5px 3px; font-weight:900; white-space:nowrap;">VELOCIDAD Y COMPONENTE DE VIENTO</th>
+    <th colspan="${currentHorizonte}" class="th-main-hr" style="background:#fecdd3; color:#9f1239; border:1px solid #0f172a; padding:6px 12px; font-weight:900; white-space:nowrap;">HR% (MÍNIMA (DÍA) / MÁXIMA (RECUPERACIÓN NOCHE))</th>
+    <th colspan="${currentHorizonte}" class="th-main-rojo" style="background:#dc2626; color:#ffffff; border:1px solid #0f172a; padding:5px 3px; font-weight:900; white-space:nowrap;">BOTÓN ROJO</th>
+  `;
+  thead.appendChild(tr1);
+
+  // Fila 2 de fechas
+  const tr2 = document.createElement('tr');
+  let tr2Html = '';
+  for (let b = 0; b < 4; b++) {
+    for (let d = 0; d < currentHorizonte; d++) {
+      tr2Html += `<th class="th-date" style="background:#f8fafc; border:1px solid #0f172a; padding:4px 2px; font-weight:800; font-size:11px; width:95px;">${dates[d]}</th>`;
+    }
+  }
+  tr2.innerHTML = tr2Html;
+  thead.appendChild(tr2);
+  table.appendChild(thead);
+
+  // Cuerpo de datos
+  const tbody = document.createElement('tbody');
+  sectoresData.forEach((sec, sIdx) => {
+    const tr = document.createElement('tr');
+    let rowHtml = `<td class="td-provincia" style="border:1px solid #0f172a; padding:6px 4px; font-weight:900; text-transform:uppercase; font-size:10.5px; background:#f8fafc; width:170px;">${sec.nombre}</td>`;
+
+    // 1. Temperatura
+    for (let d = 0; d < currentHorizonte; d++) {
+      const val = sec.data.temp[d] || '';
+      const bgCls = getTempBgClass(val);
+      const bgHex = getHexForBg(bgCls);
+      const text = val ? `${val}°C` : '';
+      const textColor = (bgCls === 'bg-temp-35') ? '#ffffff' : '#0f172a';
+      rowHtml += `<td class="${bgCls}" style="border:1px solid #0f172a; padding:5px 3px; font-weight:500; font-size:11.5px; background-color:${bgHex}; color:${textColor}; width:95px;">${text}</td>`;
+    }
+
+    // 2. Viento (Dos líneas centradas)
+    for (let d = 0; d < currentHorizonte; d++) {
+      const val = sec.data.vientoVal[d] || '';
+      const dir = sec.data.vientoDir[d] || '-';
+      const bgCls = getVientoBgClass(val);
+      const bgHex = getHexForBg(bgCls);
+      const isRachas = sec.data.vientoRachas[d] === true;
+      const numViento = parseInt(val, 10);
+      const isCalipso = !isNaN(numViento) && numViento >= 30;
+      const dirClean = dir === '-' ? '' : dir;
+      const topText = val ? `${val} km/h` : '';
+
+      let colorStyle = 'color:#0f172a; font-weight:500;';
+      if (isCalipso) {
+        colorStyle = 'color:#00ffff !important; font-weight:900 !important;'; // Negrita Calipso
+      } else if (isRachas) {
+        colorStyle = 'color:#1d4ed8 !important; font-weight:700 !important;'; // Negrita azul
+      }
+
+      rowHtml += `
+        <td class="${bgCls}" style="border:1px solid #0f172a; padding:4px 3px; text-align:center; background-color:${bgHex}; ${colorStyle} width:95px;">
+          <div style="font-size:11.5px; line-height:1.2; font-weight:inherit; color:inherit;">${topText}</div>
+          <div style="font-size:11px; line-height:1.2; margin-top:2px; font-weight:inherit; color:inherit;">${dirClean}</div>
+        </td>`;
+    }
+
+    // 3. Humedad Relativa (Compacto sin espacios)
+    for (let d = 0; d < currentHorizonte; d++) {
+      const minVal = sec.data.hrMin[d] || '';
+      const maxVal = sec.data.hrMax[d] || '';
+      const bgCls = getHRBgClass(minVal);
+      const bgHex = getHexForBg(bgCls);
+      const isCrit = isHRRecuperacionCritica(maxVal);
+      const isDayCrit = parseInt(minVal, 10) < 20;
+
+      let hrText = '';
+      if (minVal && maxVal) {
+        hrText = `${minVal}%/${maxVal}%`;
+      } else if (minVal) {
+        hrText = `${minVal}%`;
+      }
+
+      let textColor = '#0f172a';
+      let fontW = '500';
+      if (isDayCrit) {
+        textColor = '#ffffff';
+        fontW = isCrit ? '700' : '500';
+      } else if (isCrit) {
+        textColor = '#b91c1c';
+        fontW = '700';
+      }
+
+      rowHtml += `<td class="${bgCls}" style="border:1px solid #0f172a; padding:5px 3px; font-size:11.5px; background-color:${bgHex}; color:${textColor}; font-weight:${fontW}; width:95px;">${hrText}</td>`;
+    }
+
+    // 4. Botón Rojo
+    for (let d = 0; d < currentHorizonte; d++) {
+      const comunasActivas = getComunasParaFila(sec, d + 1);
+      if (comunasActivas.length > 0) {
+        rowHtml += `<td class="td-rojo-comunas" style="border:1px solid #0f172a; padding:6px 8px; color:#dc2626; font-weight:900; font-size:11px; text-align:center; background-color:#ffffff; width:95px;">${comunasActivas.join(', ')}</td>`;
+      } else {
+        rowHtml += `<td class="td-rojo-inactive" style="border:1px solid #0f172a; padding:5px 3px; color:#ef4444; font-weight:800; text-align:center; background-color:#ffffff; width:95px;">-</td>`;
+      }
+    }
+
+    tr.innerHTML = rowHtml;
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  clone.appendChild(table);
+  return { container: clone, table: table };
+}
+
+// EXPORTACIÓN A PNG (TOTALMENTE OPERATIVA)
+function exportToPNG() {
+  try {
+    const exportPack = buildExportTableElement();
+    const exportNode = exportPack.container;
+
+    exportNode.style.position = 'fixed';
+    exportNode.style.left = '-9999px';
+    exportNode.style.top = '0';
+    exportNode.style.width = '1480px';
+    document.body.appendChild(exportNode);
+
+    const filename = `boletin_meteorologico_v0.5_${currentHorizonte}dias_${dates[0].replace(/\//g, '-')}.png`;
+
+    html2canvas(exportNode, {
+      scale: 3, // Calidad Ultra HD (3x resolución nativa, nitidez absoluta para PowerPoint y zoom)
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false,
+      windowWidth: 1600
+    }).then(canvas => {
+      if (document.body.contains(exportNode)) {
+        document.body.removeChild(exportNode);
+      }
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }).catch(err => {
+      if (document.body.contains(exportNode)) {
+        document.body.removeChild(exportNode);
+      }
+      console.error('Error al exportar PNG:', err);
+      alert('Hubo un error al generar la imagen PNG.');
+    });
+  } catch (e) {
+    console.error('Error en exportToPNG:', e);
+    alert('Error al procesar la tabla para PNG.');
+  }
+}
+
+// EXPORTACIÓN A SHEETS / EXCEL (.XLS CON FORMATO Y COLORES EXACTOS)
+function exportToSheetsExcel() {
+  try {
+    const exportPack = buildExportTableElement();
+    const table = exportPack.table;
+
+    // Ajustar celdas de viento a una línea continua ("12 km/h SW")
+    table.querySelectorAll('tbody tr').forEach(row => {
+      const cells = row.querySelectorAll('td');
+      for (let c = 1 + currentHorizonte; c < 1 + 2 * currentHorizonte; c++) {
+        const td = cells[c];
+        if (td) {
+          const divs = td.querySelectorAll('div');
+          if (divs.length >= 2) {
+            const valText = divs[0].innerText.trim();
+            const dirText = divs[1].innerText.trim();
+            td.innerHTML = (valText && dirText) ? `${valText} ${dirText}` : (valText || '');
+          }
+        }
+      }
+    });
+
+    const htmlTemplate = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Pronostico_${currentHorizonte}D</x:Name>
+                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          table { border-collapse: collapse; font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; text-align: center; }
+          th, td { border: 1px solid #0f172a; padding: 6px; text-align: center; vertical-align: middle; }
+        </style>
+      </head>
+      <body>
+        ${table.outerHTML}
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([htmlTemplate], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const filename = `boletin_meteorologico_v0.5_${currentHorizonte}dias_${dates[0].replace(/\//g, '-')}.xls`;
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (e) {
+    console.error('Error en exportToSheetsExcel:', e);
+    alert('Error al exportar a Excel / Sheets.');
+  }
+}
+
+// INICIALIZACIÓN
+initDatesAutomatic();
+renderTable();
+setHorizonte(3);
+setHorizonte(3);
+</script>
+
+</body>
+</html>

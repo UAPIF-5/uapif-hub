@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UAPIF Hub - CONAF Valparaíso</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            conaf: {
+              DEFAULT: '#007A33',
+              dark: '#004d28',
+              light: '#e6f3eb'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .user-select-none {
+      user-select: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+  <!-- CABECERA PRINCIPAL -->
+  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+        
+        <!-- LOGO Y TÍTULOS -->
+        <div class="flex items-center gap-4">
+          <!-- Logo Oficial CONAF Vectorial SVG -->
+          <div class="w-12 h-14 flex-shrink-0">
+            <svg viewBox="0 0 100 120" class="w-full h-full drop-shadow-sm" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Chevron superior verde -->
+              <path d="M50 4L94 92H70L50 50L30 92H6L50 4Z" fill="#007A33"/>
+              <!-- Triángulo amarillo de advertencia -->
+              <polygon points="50,56 75,93 25,93" fill="#FFE500"/>
+              <!-- Llama roja interna -->
+              <path d="M50 67C52 72 56 74 56 78C56 83 52 86 48 86C45 86 43 84 43 81C43 78 45 76 47 75C46 72 44 70 47 67C48 69 49 69 50 67Z" fill="#E62117"/>
+              <!-- Tipografía CONAF estilizada -->
+              <text x="50" y="112" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="20" fill="#007A33" text-anchor="middle" letter-spacing="1">conaf</text>
+            </svg>
+          </div>
+
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">UAPIF Hub</h1>
+              <span class="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs px-2.5 py-0.5 rounded-full font-bold border border-emerald-300 dark:border-emerald-800">
+                Región de Valparaíso
+              </span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+              Directorio centralizado de proyectos y herramientas HTML &bull; Meteorología y Análisis IF
+            </p>
+          </div>
+        </div>
+
+        <!-- CONTROLES GLOBALES -->
+        <div class="flex items-center gap-2">
+          <!-- Botón Modo Oscuro/Claro -->
+          <button id="themeToggle" class="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Alternar tema">
+            <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
+          </button>
+
+          <!-- Botón de Respaldo JSON -->
+          <button onclick="exportarBackupJSON()" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition">
+            <i data-lucide="download" class="w-4 h-4"></i> Respaldar
+          </button>
+
+          <!-- Botón Añadir Módulo -->
+          <button onclick="abrirModalNuevo()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i> <span>Añadir HTML</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- CUERPO PRINCIPAL -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- BARRA DE BÚSQUEDA Y FILTROS -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <!-- Búsqueda en vivo -->
+      <div class="relative w-full md:w-96">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="Buscar herramientas, parámetros o rutas..." 
+          oninput="filtrarProyectos()"
+          class="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition"
+        >
+      </div>
+
+      <!-- Filtros por categoría y switch de vista -->
+      <div class="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+        <div id="categoryChips" class="flex items-center gap-1.5">
+          <!-- Categorías generadas por JS -->
+        </div>
+
+        <div class="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+
+        <!-- Alternador Vista Grid / Lista -->
+        <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+          <button id="viewGridBtn" onclick="cambiarVista('grid')" class="p-1.5 rounded-md text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white bg-white dark:bg-slate-700 shadow-xs" title="Vista cuadrícula">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+          </button>
+          <button id="viewListBtn" onclick="cambiarVista('list')" class="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" title="Vista lista">
+            <i data-lucide="list" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- NOTA DE NAVEGACIÓN -->
+    <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-black text-[10px]">💡</span>
+        <span>Haz <b>doble clic</b> en cualquier tarjeta o fila para abrirla directamente en una nueva pestaña.</span>
+      </div>
+      <span id="counterText" class="font-medium">5 herramientas activas</span>
+    </div>
+
+    <!-- CONTENEDOR DE TARJETAS / LISTA -->
+    <div id="projectsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- Inyectado por JS -->
+    </div>
+
+  </main>
+
+  <!-- MODAL: VISTA PREVIA (IFRAME SANDBOX) -->
+  <div id="previewModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-6xl h-[90vh] rounded-2xl flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <!-- Barra superior modal -->
+      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+        <div class="flex items-center gap-3">
+          <i data-lucide="layout" class="w-5 h-5 text-emerald-600"></i>
+          <div>
+            <h3 id="modalTitle" class="text-sm font-bold text-slate-900 dark:text-white">Previsualizador</h3>
+            <p id="modalUrl" class="text-xs text-slate-400 font-mono"></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="recargarIframe()" class="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition" title="Recargar">
+            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+          </button>
+          <a id="modalOpenExternal" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition">
+            <span>Abrir en pestaña nueva</span>
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          </a>
+          <button onclick="cerrarModalPreview()" class="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Iframe contenedor -->
+      <div class="flex-1 bg-white relative">
+        <iframe id="previewIframe" src="" class="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVA HERRAMIENTA -->
+  <div id="newToolModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+        <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="plus" class="w-5 h-5 text-emerald-600"></i> Registrar Nuevo Módulo HTML
+        </h3>
+        <button onclick="cerrarModalNuevo()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="newToolForm" onsubmit="guardarNuevoModulo(event)" class="space-y-3.5 text-xs sm:text-sm">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre de la Herramienta</label>
+          <input type="text" id="toolTitle" required placeholder="Ej: Visor Vientos WRF" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Ruta Relativa o Archivo</label>
+          <input type="text" id="toolUrl" required placeholder="./modulos/nombre_archivo.html" class="w-full px-3 py-2 border rounded-lg font-mono text-xs dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white">
+          <span class="text-[11px] text-slate-400 mt-0.5 block">Ejemplo: ./modulos/nuevo_script.html</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Categoría</label>
+            <input type="text" id="toolCategory" required placeholder="Pronóstico, Viento..." class="w-full px-3 py-2 border rounded-lg dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Ícono</label>
+            <select id="toolIcon" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white">
+              <option value="gauge">gauge (Indicador)</option>
+              <option value="wind">wind (Viento)</option>
+              <option value="flame">flame (Fuego / HCFM)</option>
+              <option value="map-pin">map-pin (Mapa / GIS)</option>
+              <option value="message-square">message-square (WhatsApp / Alertas)</option>
+              <option value="cloud-sun">cloud-sun (Meteorología)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Descripción</label>
+          <textarea id="toolDesc" rows="2" placeholder="Resumen del funcionamiento y datos utilizados..." class="w-full px-3 py-2 border rounded-lg dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+          <button type="button" onclick="cerrarModalNuevo()" class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100">Cancelar</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold">Guardar Módulo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // 5 HERRAMIENTAS INTEGRADAS CON SUS RUTAS RELATIVAS A ./modulos/
+    const DEFAULT_MODULES = [
+      {
+        id: "mod-1",
+        title: "Calculadora HCFM (P-240)",
+        category: "Humedad y Combustibles",
+        url: "./modulos/calculadora_hcfm.html",
+        icon: "flame",
+        badge: "CONAF P-240",
+        badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800",
+        desc: "Cálculo oficial de Humedad del Combustible Fino Muerto (1h) y Probabilidad de Ignición según tablas meteorológicas y factores de terreno de CONAF Valparaíso."
+      },
+      {
+        id: "mod-2",
+        title: "Boletín y Pronóstico Meteorológico",
+        category: "Pronóstico y Alertas",
+        url: "./modulos/boletin_meteorologico.html",
+        icon: "cloud-sun",
+        badge: "Exportable PNG/XLS",
+        badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-800",
+        desc: "Matriz interactiva a 3 y 4 días con temperaturas, velocidad/dirección del viento y rangos de humedad relativa. Genera reportes oficiales de alta resolución."
+      },
+      {
+        id: "mod-3",
+        title: "Generador de Alertas WhatsApp",
+        category: "Comunicaciones y Alertas",
+        url: "./modulos/mensaje_condiciones_met.html",
+        icon: "message-square",
+        badge: "WhatsApp Ready",
+        badgeColor: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-300 dark:border-teal-800",
+        desc: "Asistente de redacción para partes meteorológicos y Alerta Temprana IF con vista previa instantánea simulador de chat y selector de comunas en Botón Rojo."
+      },
+      {
+        id: "mod-4",
+        title: "Cálculo de Velocidad de Propagación",
+        category: "Comportamiento y Viento",
+        url: "./modulos/calculo_vel_propagacion.html",
+        icon: "wind",
+        badge: "Visor GIS / KMZ",
+        badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800",
+        desc: "Herramienta cartográfica con medición de avance del fuego entre horas (A ➔ B), slider cronológico, proyección futura y visor rápido de perímetros KMZ/KML."
+      },
+      {
+        id: "mod-5",
+        title: "Visor de Infraestructura Crítica",
+        category: "Cartografía y Riesgo",
+        url: "./modulos/visor_infraestructura_critica_valparaiso.html",
+        icon: "map-pin",
+        badge: "Regional Valparaíso",
+        badgeColor: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800",
+        desc: "Sistema territorial con inventario de salud, educación, telecomunicaciones, tendido eléctrico, campamentos y análisis espacial de buffer para emergencias."
+      }
+    ];
+
+    let projects = [];
+    let currentCategory = "ALL";
+    let currentView = "grid";
+
+    // CARGAR ESTADO
+    function inicializarHub() {
+      const saved = localStorage.getItem('uapif_hub_tools_v1');
+      if (saved) {
+        try { projects = JSON.parse(saved); } catch(e) { projects = [...DEFAULT_MODULES]; }
+      } else {
+        projects = [...DEFAULT_MODULES];
+        guardarEnStorage();
+      }
+
+      currentView = localStorage.getItem('uapif_hub_view') || 'grid';
+      cambiarVista(currentView, false);
+
+      initTheme();
+      renderizarCategorias();
+      renderizarProyectos();
+    }
+
+    function guardarEnStorage() {
+      localStorage.setItem('uapif_hub_tools_v1', JSON.stringify(projects));
+    }
+
+    // ABRIR PROYECTO (DOBLE CLICK DIRECTO)
+    function abrirProyectoEnPestana(url) {
+      if (!url) return;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    // RENDERIZAR CATEGORÍAS
+    function renderizarCategorias() {
+      const categoriesSet = new Set(projects.map(p => p.category));
+      const categories = ["ALL", ...Array.from(categoriesSet)];
+      const container = document.getElementById('categoryChips');
+      container.innerHTML = '';
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        const count = cat === "ALL" ? projects.length : projects.filter(p => p.category === cat).length;
+        const isActive = cat === currentCategory;
+
+        btn.className = `px-2.5 py-1 text-xs font-semibold rounded-lg transition user-select-none whitespace-nowrap ${
+          isActive 
+            ? 'bg-emerald-700 text-white shadow-xs' 
+            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+        }`;
+        btn.textContent = cat === "ALL" ? `Todas (${count})` : `${cat} (${count})`;
+        btn.onclick = () => {
+          currentCategory = cat;
+          renderizarCategorias();
+          renderizarProyectos();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    // RENDERIZAR TARJETAS / FILAS
+    function renderizarProyectos() {
+      const container = document.getElementById('projectsContainer');
+      const search = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+
+      const filtered = projects.filter(p => {
+        const matchCat = currentCategory === "ALL" || p.category === currentCategory;
+        const matchSearch = p.title.toLowerCase().includes(search) || 
+                            p.desc.toLowerCase().includes(search) || 
+                            p.category.toLowerCase().includes(search) ||
+                            p.url.toLowerCase().includes(search);
+        return matchCat && matchSearch;
+      });
+
+      document.getElementById('counterText').textContent = `${filtered.length} herramienta${filtered.length === 1 ? '' : 's'} mostrada${filtered.length === 1 ? '' : 's'}`;
+      container.innerHTML = '';
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-16 text-center text-slate-400 space-y-2">
+            <i data-lucide="folder-search" class="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600"></i>
+            <p class="font-medium text-sm">No se encontraron herramientas con esos criterios.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      if (currentView === 'grid') {
+        container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5";
+        filtered.forEach(item => {
+          const card = document.createElement('div');
+          card.className = "bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all flex flex-col justify-between cursor-pointer group user-select-none";
+          
+          // EVENTO DE DOBLE CLIC EN TODA LA TARJETA
+          card.ondblclick = () => abrirProyectoEnPestana(item.url);
+
+          card.innerHTML = `
+            <div class="space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <i data-lucide="${item.icon || 'file-code'}" class="w-5 h-5"></i>
+                </div>
+                <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300'}">
+                  ${item.badge || item.category}
+                </span>
+              </div>
+
+              <div>
+                <h4 class="font-bold text-base text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                  ${item.title}
+                </h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                  ${item.desc}
+                </p>
+              </div>
+            </div>
+
+            <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span class="text-[11px] font-mono text-slate-400 truncate max-w-[140px]" title="${item.url}">
+                ${item.url}
+              </span>
+
+              <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+                <button onclick="abrirModalPreview('${item.url}', '${item.title.replace(/'/g, "\'")}')" class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i> Vista previa
+                </button>
+                <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="p-1.5 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition" title="Abrir en pestaña nueva">
+                  <i data-lucide="external-link" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      } else {
+        // VISTA LISTA
+        container.className = "flex flex-col gap-2.5";
+        filtered.forEach(item => {
+          const row = document.createElement('div');
+          row.className = "bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition flex items-center justify-between gap-4 cursor-pointer group user-select-none";
+          
+          // EVENTO DE DOBLE CLIC EN LA FILA
+          row.ondblclick = () => abrirProyectoEnPestana(item.url);
+
+          row.innerHTML = `
+            <div class="flex items-center gap-3.5 min-w-0">
+              <div class="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                <i data-lucide="${item.icon || 'file-code'}" class="w-4 h-4"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h4 class="font-bold text-sm text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
+                    ${item.title}
+                  </h4>
+                  <span class="text-[10px] font-bold px-2 py-0.2 rounded-full border ${item.badgeColor || 'bg-slate-100 text-slate-600'}">
+                    ${item.category}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-400 truncate max-w-xl">
+                  ${item.desc}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 flex-shrink-0" onclick="event.stopPropagation()">
+              <span class="text-xs font-mono text-slate-400 hidden lg:inline-block">${item.url}</span>
+              <button onclick="abrirModalPreview('${item.url}', '${item.title.replace(/'/g, "\'")}')" class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i> Vista previa
+              </button>
+              <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="p-1.5 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400" title="Abrir en pestaña nueva">
+                <i data-lucide="external-link" class="w-4 h-4"></i>
+              </a>
+            </div>
+          `;
+          container.appendChild(row);
+        });
+      }
+
+      lucide.createIcons();
+    }
+
+    function cambiarVista(vista, render = true) {
+      currentView = vista;
+      localStorage.setItem('uapif_hub_view', vista);
+      
+      const gridBtn = document.getElementById('viewGridBtn');
+      const listBtn = document.getElementById('viewListBtn');
+
+      if (vista === 'grid') {
+        gridBtn.className = "p-1.5 rounded-md text-slate-700 dark:text-white bg-white dark:bg-slate-700 shadow-xs";
+        listBtn.className = "p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200";
+      } else {
+        listBtn.className = "p-1.5 rounded-md text-slate-700 dark:text-white bg-white dark:bg-slate-700 shadow-xs";
+        gridBtn.className = "p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200";
+      }
+
+      if (render) renderizarProyectos();
+    }
+
+    function filtrarProyectos() {
+      renderizarProyectos();
+    }
+
+    // MODAL PREVIEW
+    function abrirModalPreview(url, title) {
+      const modal = document.getElementById('previewModal');
+      const iframe = document.getElementById('previewIframe');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalUrl = document.getElementById('modalUrl');
+      const externalLink = document.getElementById('modalOpenExternal');
+
+      modalTitle.textContent = title;
+      modalUrl.textContent = url;
+      externalLink.href = url;
+      iframe.src = url;
+
+      modal.classList.remove('hidden');
+    }
+
+    function cerrarModalPreview() {
+      const modal = document.getElementById('previewModal');
+      const iframe = document.getElementById('previewIframe');
+      iframe.src = '';
+      modal.classList.add('hidden');
+    }
+
+    function recargarIframe() {
+      const iframe = document.getElementById('previewIframe');
+      iframe.src = iframe.src;
+    }
+
+    // MODAL NUEVO
+    function abrirModalNuevo() {
+      document.getElementById('newToolModal').classList.remove('hidden');
+    }
+    function cerrarModalNuevo() {
+      document.getElementById('newToolModal').classList.add('hidden');
+      document.getElementById('newToolForm').reset();
+    }
+
+    function guardarNuevoModulo(e) {
+      e.preventDefault();
+      const nuevo = {
+        id: "mod-" + Date.now(),
+        title: document.getElementById('toolTitle').value.trim(),
+        url: document.getElementById('toolUrl').value.trim(),
+        category: document.getElementById('toolCategory').value.trim() || 'General',
+        icon: document.getElementById('toolIcon').value,
+        badge: "Personalizado",
+        badgeColor: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700",
+        desc: document.getElementById('toolDesc').value.trim() || 'Herramienta añadida manualmente al hub.'
+      };
+
+      projects.unshift(nuevo);
+      guardarEnStorage();
+      renderizarCategorias();
+      renderizarProyectos();
+      cerrarModalNuevo();
+    }
+
+    // RESPALDO JSON
+    function exportarBackupJSON() {
+      const blob = new Blob([JSON.stringify(projects, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `uapif_hub_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // TEMA OSCURO / CLARO
+    function initTheme() {
+      const isDark = localStorage.getItem('uapif_hub_theme') === 'dark' || 
+                    (!('uapif_hub_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.getElementById('themeIcon').setAttribute('data-lucide', 'sun');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('themeIcon').setAttribute('data-lucide', 'moon');
+      }
+      lucide.createIcons();
+    }
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('uapif_hub_theme', isDark ? 'dark' : 'light');
+      document.getElementById('themeIcon').setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+      lucide.createIcons();
+    });
+
+    // CERRAR MODALES CON ESCAPE
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        cerrarModalPreview();
+        cerrarModalNuevo();
+      }
+    });
+
+    // INICIAR
+    window.addEventListener('DOMContentLoaded', inicializarHub);
+  </script>
+</body>
+</html>

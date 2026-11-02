@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Mensajes WhatsApp - Alerta Temprana IF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f1f3f0;
+      color: #2c3830;
+      padding: 30px 20px;
+      min-height: 100vh;
+    }
+
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      max-width: 1350px;
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    @media (max-width: 992px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* --- PANEL IZQUIERDO: EDICIÓN --- */
+    .panel-left {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+    }
+
+    .panel-header {
+      margin-bottom: 24px;
+    }
+
+    .panel-header h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #0d3822;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .panel-header p {
+      font-size: 0.9rem;
+      color: #637367;
+      font-weight: 500;
+    }
+
+    .card-field {
+      background-color: #edf2ed;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #e1eae1;
+    }
+
+    .card-field-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .icon-badge {
+      background: #ffffff;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      border: 1px solid #e2e8e2;
+    }
+
+    .card-field-header label {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #0e301a;
+    }
+
+    .card-field input[type="text"], 
+    .card-field input[type="date"], 
+    .card-field input[type="time"], 
+    .card-field textarea {
+      width: 100%;
+      border: 1px solid #d4ded4;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 0.92rem;
+      background-color: #ffffff;
+      color: #1f2d24;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .card-field input:focus, 
+    .card-field textarea:focus {
+      border-color: #054d28;
+      box-shadow: 0 0 0 3px rgba(5, 77, 40, 0.1);
+    }
+
+    .card-field textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* --- DESPLEGABLE MULTI-SELECT COMUNAS --- */
+    .custom-multiselect {
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    .select-btn {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #d4ded4;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 0.92rem;
+      cursor: pointer;
+      color: #1f2d24;
+      font-weight: 500;
+    }
+
+    .options-container {
+      display: none;
+      position: absolute;
+      top: 105%;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #c8d6c8;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 100;
+      padding: 10px;
+    }
+
+    .options-container.active {
+      display: block;
+    }
+
+    .options-actions {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .btn-small {
+      background: #edf2ed;
+      border: none;
+      color: #075e54;
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .province-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #075e54;
+      text-transform: uppercase;
+      margin: 8px 0 4px 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .option-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .option-item:hover {
+      background-color: #f0f7f2;
+    }
+
+    .option-item input {
+      accent-color: #00a884;
+      width: 16px;
+      height: 16px;
+    }
+
+    /* --- PANEL DERECHO: PREVISUALIZACIÓN WHATSAPP --- */
+    .panel-right {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+      position: sticky;
+      top: 20px;
+    }
+
+    .phone-mockup {
+      background-color: #075e54;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.15);
+      border: 1px solid #054d28;
+      margin-bottom: 12px;
+    }
+
+    .wa-header {
+      background-color: #075e54;
+      color: #ffffff;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .wa-avatar {
+      width: 36px;
+      height: 36px;
+      background-color: #25d366;
+      color: #075e54;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .wa-title-container {
+      flex: 1;
+    }
+
+    .wa-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      line-height: 1.2;
+    }
+
+    .wa-subtitle {
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    .wa-icons {
+      display: flex;
+      gap: 14px;
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .wa-body {
+      background-color: #e5ddd5;
+      background-image: radial-gradient(#d3c7bb 1px, transparent 0);
+      background-size: 12px 12px;
+      padding: 16px 14px;
+      min-height: 420px;
+      max-height: 560px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .wa-date-divider {
+      align-self: center;
+      background: #e1f3fb;
+      color: #556066;
+      font-size: 0.72rem;
+      padding: 4px 12px;
+      border-radius: 6px;
+      margin-bottom: 14px;
+      font-weight: 600;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+    }
+
+    .wa-bubble {
+      background-color: #dcf8c6;
+      border-radius: 10px 0px 10px 10px;
+      padding: 10px 12px 22px 12px;
+      max-width: 90%;
+      align-self: flex-end;
+      position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+      font-size: 0.88rem;
+      color: #111b21;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      line-height: 1.45;
+    }
+
+    .wa-time {
+      position: absolute;
+      bottom: 4px;
+      right: 8px;
+      font-size: 0.68rem;
+      color: #667781;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .wa-checks {
+      color: #4fb6ec;
+      font-weight: bold;
+    }
+
+    .wa-footer {
+      background-color: #f0f2f5;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .wa-input-fake {
+      background: #ffffff;
+      flex: 1;
+      border-radius: 20px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      color: #8696a0;
+    }
+
+    .wa-mic {
+      background-color: #00a884;
+      color: white;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+
+    .char-counter {
+      font-size: 0.82rem;
+      color: #718096;
+      margin-bottom: 16px;
+      font-family: monospace;
+    }
+
+    .btn-copy {
+      width: 100%;
+      background-color: #00a884;
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      box-shadow: 0 4px 12px rgba(0, 168, 132, 0.25);
+    }
+
+    .btn-copy:hover {
+      background-color: #008f70;
+    }
+
+    .btn-copy:active {
+      transform: scale(0.99);
+    }
+  </style>
+</head>
+<body>
+
+<div class="main-container">
+
+  <!-- PANEL IZQUIERDO: FORMULARIO -->
+  <div class="panel-left">
+    <div class="panel-header">
+      <h1>🔥 Panel de Edición</h1>
+      <p>Completá cada sección: elegí el emoji, ajustá el título y escribí el contenido.</p>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">🔥</span>
+        <label>Previsión Meteorológica</label>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label style="font-size:0.78rem; font-weight:600; color:#555; display:block; margin-bottom:4px;">Desde:</label>
+          <input type="date" id="fechaInicio">
+        </div>
+        <div>
+          <label style="font-size:0.78rem; font-weight:600; color:#555; display:block; margin-bottom:4px;">Hasta:</label>
+          <input type="date" id="fechaFin">
+        </div>
+      </div>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">📅</span>
+        <label>Fecha de Emisión</label>
+      </div>
+      <input type="text" id="fecha" value="Jueves 24 de Julio del 2026">
+    </div>
+
+    <!-- BOTÓN ROJO Y HORAS CRÍTICAS -->
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">🚨</span>
+        <label>Botón Rojo</label>
+      </div>
+      
+      <div class="custom-multiselect">
+        <div class="select-btn" id="selectComunasBtn">
+          <span id="selectComunasText">Seleccionar comunas en Botón Rojo...</span>
+          <span>▼</span>
+        </div>
+        <div class="options-container" id="optionsContainer">
+          <div class="options-actions">
+            <button class="btn-small" onclick="toggleAllComunas(true)">Marcar Todas</button>
+            <button class="btn-small" onclick="toggleAllComunas(false)">Desmarcar Todas</button>
+          </div>
+          
+          <div class="province-title">Provincia de Valparaíso</div>
+          <label class="option-item"><input type="checkbox" value="Valparaíso"> Valparaíso</label>
+          <label class="option-item"><input type="checkbox" value="Viña del Mar"> Viña del Mar</label>
+          <label class="option-item"><input type="checkbox" value="Concón"> Concón</label>
+          <label class="option-item"><input type="checkbox" value="Quintero"> Quintero</label>
+          <label class="option-item"><input type="checkbox" value="Puchuncaví"> Puchuncaví</label>
+          <label class="option-item"><input type="checkbox" value="Casablanca"> Casablanca</label>
+
+          <div class="province-title">Provincia de Marga Marga</div>
+          <label class="option-item"><input type="checkbox" value="Quilpué"> Quilpué</label>
+          <label class="option-item"><input type="checkbox" value="Villa Alemana"> Villa Alemana</label>
+          <label class="option-item"><input type="checkbox" value="Limache"> Limache</label>
+          <label class="option-item"><input type="checkbox" value="Olmué"> Olmué</label>
+
+          <div class="province-title">Provincia de San Antonio</div>
+          <label class="option-item"><input type="checkbox" value="San Antonio"> San Antonio</label>
+          <label class="option-item"><input type="checkbox" value="Cartagena"> Cartagena</label>
+          <label class="option-item"><input type="checkbox" value="El Tabo"> El Tabo</label>
+          <label class="option-item"><input type="checkbox" value="El Quisco"> El Quisco</label>
+          <label class="option-item"><input type="checkbox" value="Algarrobo"> Algarrobo</label>
+          <label class="option-item"><input type="checkbox" value="Santo Domingo"> Santo Domingo</label>
+
+          <div class="province-title">Provincia de Quillota</div>
+          <label class="option-item"><input type="checkbox" value="Quillota"> Quillota</label>
+          <label class="option-item"><input type="checkbox" value="La Cruz"> La Cruz</label>
+          <label class="option-item"><input type="checkbox" value="Calera"> Calera</label>
+          <label class="option-item"><input type="checkbox" value="Nogales"> Nogales</label>
+          <label class="option-item"><input type="checkbox" value="Hijuelas"> Hijuelas</label>
+
+          <div class="province-title">Provincia de San Felipe</div>
+          <label class="option-item"><input type="checkbox" value="San Felipe"> San Felipe</label>
+          <label class="option-item"><input type="checkbox" value="Llaillay"> Llaillay</label>
+          <label class="option-item"><input type="checkbox" value="Catemu"> Catemu</label>
+          <label class="option-item"><input type="checkbox" value="Panquehue"> Panquehue</label>
+          <label class="option-item"><input type="checkbox" value="Putaendo"> Putaendo</label>
+          <label class="option-item"><input type="checkbox" value="Santa María"> Santa María</label>
+
+          <div class="province-title">Provincia de Los Andes</div>
+          <label class="option-item"><input type="checkbox" value="Los Andes"> Los Andes</label>
+          <label class="option-item"><input type="checkbox" value="San Esteban"> San Esteban</label>
+          <label class="option-item"><input type="checkbox" value="Calle Larga"> Calle Larga</label>
+          <label class="option-item"><input type="checkbox" value="Rinconada"> Rinconada</label>
+
+          <div class="province-title">Provincia de Petorca</div>
+          <label class="option-item"><input type="checkbox" value="La Ligua"> La Ligua</label>
+          <label class="option-item"><input type="checkbox" value="Cabildo"> Cabildo</label>
+          <label class="option-item"><input type="checkbox" value="Zapallar"> Zapallar</label>
+          <label class="option-item"><input type="checkbox" value="Papudo"> Papudo</label>
+          <label class="option-item"><input type="checkbox" value="Petorca"> Petorca</label>
+        </div>
+      </div>
+
+      <textarea id="botonRojoObs" placeholder="Detalles u observaciones del Botón Rojo..." style="margin-top: 8px;"></textarea>
+    </div>
+
+    <!-- HORAS CRÍTICAS CON RELOJ -->
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">🕰️</span>
+        <label>Horas Críticas</label>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label style="font-size:0.78rem; font-weight:600; color:#555; display:block; margin-bottom:4px;">Desde:</label>
+          <input type="time" id="horaInicio" value="13:00">
+        </div>
+        <div>
+          <label style="font-size:0.78rem; font-weight:600; color:#555; display:block; margin-bottom:4px;">Hasta:</label>
+          <input type="time" id="horaFin" value="19:00">
+        </div>
+      </div>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">🔎</span>
+        <label>Panorama General</label>
+      </div>
+      <textarea id="panorama" placeholder="Condición general para la ocurrencia y propagación..."></textarea>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">⚖️</span>
+        <label>Probabilidad de Ignición</label>
+      </div>
+      <textarea id="ignicion" placeholder="Detalle por zonas..."></textarea>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">🌾</span>
+        <label>Humedad del Combustible Fino Muerto (1h)</label>
+      </div>
+      <textarea id="humedadCombustible" placeholder="Porcentaje e impacto por zona..."></textarea>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">💨</span>
+        <label>Velocidad del Viento</label>
+      </div>
+      <textarea id="viento" placeholder="Dirección, intensidad y ráfagas esperadas..."></textarea>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">🌡️</span>
+        <label>Temperatura Máxima</label>
+      </div>
+      <textarea id="temperatura" placeholder="Temperatura máxima esperada por zonas..."></textarea>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">💧</span>
+        <label>Humedad Relativa</label>
+      </div>
+      <textarea id="humedadRelativa" placeholder="Humedad relativa estimada..."></textarea>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">⚠️</span>
+        <label>Avisos y Alertas Vigentes, DMC</label>
+      </div>
+      <textarea id="alertas" placeholder="Sin avisos ni alertas vigentes..."></textarea>
+    </div>
+
+    <div class="card-field">
+      <div class="card-field-header">
+        <span class="icon-badge">📌</span>
+        <label>Otras Consideraciones</label>
+      </div>
+      <textarea id="consideraciones" placeholder="Ej: Avisos de quema no habilitados..."></textarea>
+    </div>
+
+  </div>
+
+  <!-- PANEL DERECHO: PREVISUALIZACIÓN -->
+  <div class="panel-right">
+    <div class="panel-header">
+      <h1>📱 Previsualización WhatsApp</h1>
+      <p>Así se va a ver el parte en el chat, en tiempo real.</p>
+    </div>
+
+    <div class="phone-mockup">
+      <div class="wa-header">
+        <div class="wa-avatar">IF</div>
+        <div class="wa-title-container">
+          <div class="wa-title">Alerta Temprana IF</div>
+          <div class="wa-subtitle">en línea</div>
+        </div>
+        <div class="wa-icons">
+          <span>📹</span>
+          <span>⋮</span>
+        </div>
+      </div>
+
+      <div class="wa-body">
+        <div class="wa-date-divider">Hoy</div>
+
+        <div class="wa-bubble">
+          <div id="previewText"></div>
+          <div class="wa-time">
+            <span id="currentTime">15:15</span>
+            <span class="wa-checks">✓✓</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wa-footer">
+        <span style="color:#8696a0; font-size:1.1rem; padding-left: 4px;">😊</span>
+        <div class="wa-input-fake">Mensaje</div>
+        <span style="color:#8696a0; font-size:1.1rem;">📎</span>
+        <div class="wa-mic">🎤</div>
+      </div>
+    </div>
+
+    <div class="char-counter"><span id="charCount">0</span> caracteres</div>
+
+    <button class="btn-copy" onclick="copiarTexto()">
+      <span>📋</span> Copiar Texto para WhatsApp
+    </button>
+  </div>
+
+</div>
+
+<script>
+  // Manejo del desplegable multi-selección de comunas
+  const selectBtn = document.getElementById('selectComunasBtn');
+  const optionsContainer = document.getElementById('optionsContainer');
+  const selectComunasText = document.getElementById('selectComunasText');
+
+  selectBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    optionsContainer.classList.toggle('active');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!optionsContainer.contains(e.target) && e.target !== selectBtn) {
+      optionsContainer.classList.remove('active');
+    }
+  });
+
+  function getSelectedComunas() {
+    const checkboxes = optionsContainer.querySelectorAll('input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+  }
+
+  function toggleAllComunas(status) {
+    const checkboxes = optionsContainer.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = status);
+    updatePreview();
+  }
+
+  // Inicializar fechas por defecto (Hoy y Mañana)
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  document.getElementById('fechaInicio').value = today.toISOString().split('T')[0];
+  document.getElementById('fechaFin').value = tomorrow.toISOString().split('T')[0];
+
+  function formatDateES(dateString) {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function updatePreview() {
+    const selectedComunas = getSelectedComunas();
+    
+    // Actualizar texto del selector de comunas
+    if (selectedComunas.length === 0) {
+      selectComunasText.textContent = "Seleccionar comunas en Botón Rojo...";
+    } else {
+      selectComunasText.textContent = `Comunas seleccionadas (${selectedComunas.length})`;
+    }
+
+    const fechaInicioVal = document.getElementById('fechaInicio').value;
+    const fechaFinVal = document.getElementById('fechaFin').value;
+    
+    const fechaInicioStr = formatDateES(fechaInicioVal);
+    const fechaFinStr = formatDateES(fechaFinVal);
+
+    const fecha = document.getElementById('fecha').value.trim();
+    const botonRojoObs = document.getElementById('botonRojoObs').value.trim();
+    
+    const horaInicio = document.getElementById('horaInicio').value;
+    const horaFin = document.getElementById('horaFin').value;
+
+    const panorama = document.getElementById('panorama').value.trim();
+    const ignicion = document.getElementById('ignicion').value.trim();
+    const humedadCombustible = document.getElementById('humedadCombustible').value.trim();
+    const viento = document.getElementById('viento').value.trim();
+    const temperatura = document.getElementById('temperatura').value.trim();
+    const humedadRelativa = document.getElementById('humedadRelativa').value.trim();
+    
+    const alertas = document.getElementById('alertas').value.trim();
+    const consideraciones = document.getElementById('consideraciones').value.trim();
+
+    let lines = [];
+
+    if (fechaInicioStr && fechaFinStr) {
+      lines.push(`🔥 *Previsión Meteorológica:* del ${fechaInicioStr} al ${fechaFinStr}`);
+    } else if (fechaInicioStr) {
+      lines.push(`🔥 *Previsión Meteorológica:* ${fechaInicioStr}`);
+    }
+
+    if (fecha) lines.push(`📅 *Fecha:* ${fecha}`);
+
+    // Sección Botón Rojo
+    if (selectedComunas.length > 0 || botonRojoObs) {
+      lines.push(`\n🚨 *BOTÓN ROJO PARA LAS COMUNAS:*`);
+      if (selectedComunas.length > 0) {
+        lines.push(selectedComunas.join(', '));
+      }
+      if (botonRojoObs) {
+        lines.push(botonRojoObs);
+      }
+    }
+
+    // Horas Críticas
+    if (horaInicio && horaFin) {
+      lines.push(`\n🕰️ *Horas críticas:* de ${horaInicio} a ${horaFin} hrs`);
+    }
+
+    if (panorama) {
+      lines.push(`\n🔎 *Panorama General:*`);
+      lines.push(panorama);
+    }
+
+    if (ignicion) {
+      lines.push(`\n⚖️ *Probabilidad de Ignición:*`);
+      lines.push(ignicion);
+    }
+
+    if (humedadCombustible) {
+      lines.push(`\n🌾 *Humedad Combustible Fino Muerto (1h):*`);
+      lines.push(humedadCombustible);
+    }
+
+    if (viento) {
+      lines.push(`\n💨 *Velocidad del Viento:*`);
+      lines.push(viento);
+    }
+
+    if (temperatura) {
+      lines.push(`\n🌡️ *Temperatura Máxima:*`);
+      lines.push(temperatura);
+    }
+
+    if (humedadRelativa) {
+      lines.push(`\n💧 *Humedad Relativa:*`);
+      lines.push(humedadRelativa);
+    }
+
+    if (alertas) {
+      lines.push(`\n⚠️ *Avisos y alertas vigentes, DMC:*`);
+      lines.push(alertas);
+    }
+
+    if (consideraciones) {
+      lines.push(`\n📌 *Otras consideraciones:*`);
+      lines.push(consideraciones);
+    }
+
+    // Firma fija automática
+    lines.push(`\n*Unidad de Análisis y Predicción de Incendios Forestales, CONAF Región de Valparaíso*`);
+
+    const fullText = lines.join('\n');
+    document.getElementById('previewText').textContent = fullText;
+    document.getElementById('charCount').textContent = fullText.length;
+  }
+
+  function copiarTexto() {
+    const texto = document.getElementById('previewText').textContent;
+    navigator.clipboard.writeText(texto).then(() => {
+      const btn = document.querySelector('.btn-copy');
+      const prevText = btn.innerHTML;
+      btn.innerHTML = '✅ ¡Copiado exitosamente!';
+      btn.style.backgroundColor = '#128c7e';
+      setTimeout(() => {
+        btn.innerHTML = prevText;
+        btn.style.backgroundColor = '#00a884';
+      }, 2000);
+    });
+  }
+
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('currentTime').textContent = `${hours}:${minutes}`;
+
+  // Escuchar eventos
+  document.querySelectorAll('input, textarea').forEach(el => {
+    el.addEventListener('input', updatePreview);
+    el.addEventListener('change', updatePreview);
+  });
+
+  updatePreview();
+</script>
+
+</body>
+</html>
