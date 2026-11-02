@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Previsión Meteorológica IF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+    /* VARIABLES DE COLOR - TEMA CLARO PREDETERMINADO */
+    :root {
+      --bg-body: #f0f2f5;
+      --text-main: #1f2937;
+      --text-label: #4b5563;
+      --panel-bg: #ffffff;
+      --panel-border: #e5e7eb;
+      --card-bg: #f8fafc;
+      --card-border: #e2e8f0;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+      --input-text: #111827;
+      --header-title: #0f172a;
+      --accent-green: #15803d;
+      --btn-time-bg: #e2e8f0;
+      --btn-time-border: #cbd5e1;
+      --btn-time-text: #334155;
+      --btn-time-hover: #cbd5e1;
+      --wa-phone-bg: #efeae2;
+      --wa-header-bg: #f0f2f5;
+      --wa-header-border: #d1d7db;
+      --wa-header-title: #111b21;
+      --wa-header-sub: #667781;
+      --wa-bubble-bg: #d9fdd3;
+      --wa-bubble-text: #111b21;
+      --wa-time-color: #667781;
+      --wa-pattern-dot: rgba(0, 0, 0, 0.08);
+      --btn-theme-bg: #e2e8f0;
+      --btn-theme-border: #cbd5e1;
+      --btn-theme-text: #1e293b;
+    }
+
+    /* VARIABLES DE COLOR - TEMA OSCURO */
+    body.dark-mode {
+      --bg-body: #12181b;
+      --text-main: #e0e6ed;
+      --text-label: #9ba8b5;
+      --panel-bg: #1a232a;
+      --panel-border: #2a363f;
+      --card-bg: #212d35;
+      --card-border: #2d3d48;
+      --input-bg: #161e24;
+      --input-border: #364855;
+      --input-text: #ffffff;
+      --header-title: #ffffff;
+      --accent-green: #4cd964;
+      --btn-time-bg: #2d3d48;
+      --btn-time-border: #435868;
+      --btn-time-text: #ffffff;
+      --btn-time-hover: #364855;
+      --wa-phone-bg: #0b141a;
+      --wa-header-bg: #202c33;
+      --wa-header-border: #222d34;
+      --wa-header-title: #e9edef;
+      --wa-header-sub: #8696a0;
+      --wa-bubble-bg: #005c4b;
+      --wa-bubble-text: #e9edef;
+      --wa-time-color: #8696a0;
+      --wa-pattern-dot: #1f2c34;
+      --btn-theme-bg: #2d3d48;
+      --btn-theme-border: #435868;
+      --btn-theme-text: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+
+    .main-container {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    @media (max-width: 992px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .panel-header {
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .panel-header h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--header-title);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-toggle-theme {
+      background: var(--btn-theme-bg);
+      border: 1px solid var(--btn-theme-border);
+      color: var(--btn-theme-text);
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+    }
+
+    .btn-clear-all {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #b91c1c;
+      padding: 8px 14px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    body.dark-mode .btn-clear-all {
+      background: #3a1c1e;
+      border-color: #73262c;
+      color: #ff6b6b;
+    }
+
+    .btn-clear-all:hover {
+      opacity: 0.85;
+    }
+
+    .card-section {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid var(--card-border);
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--accent-green);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field-group label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-label);
+      text-transform: uppercase;
+    }
+
+    input[type="text"], 
+    input[type="number"], 
+    input[type="date"], 
+    input[type="time"], 
+    select {
+      width: 100%;
+      border: 1px solid var(--input-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      background-color: var(--input-bg);
+      color: var(--input-text);
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+
+    body.dark-mode input:focus, body.dark-mode select:focus {
+      border-color: #4cd964;
+      box-shadow: 0 0 0 2px rgba(76, 217, 100, 0.2);
+    }
+
+    .btn-time {
+      background: var(--btn-time-bg);
+      border: 1px solid var(--btn-time-border);
+      color: var(--btn-time-text);
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    .btn-time:hover {
+      background: var(--btn-time-hover);
+    }
+
+    /* PREVISUALIZACIÓN WHATSAPP */
+    .panel-right {
+      position: sticky;
+      top: 20px;
+    }
+
+    .phone-mockup {
+      background-color: var(--wa-phone-bg);
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--wa-header-border);
+      box-shadow: 0 12px 35px rgba(0,0,0,0.12);
+    }
+
+    .wa-header {
+      background-color: var(--wa-header-bg);
+      color: var(--wa-header-title);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--wa-header-border);
+    }
+
+    .wa-avatar-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+
+    .wa-title {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--wa-header-title);
+    }
+
+    .wa-subtitle {
+      font-size: 0.72rem;
+      color: var(--wa-header-sub);
+    }
+
+    .wa-body {
+      background-color: var(--wa-phone-bg);
+      background-image: radial-gradient(var(--wa-pattern-dot) 1px, transparent 0);
+      background-size: 14px 14px;
+      padding: 16px 12px;
+      min-height: 380px;
+      max-height: 520px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .wa-bubble {
+      background-color: var(--wa-bubble-bg);
+      border-radius: 8px;
+      padding: 12px 14px 24px 14px;
+      max-width: 95%;
+      align-self: flex-end;
+      position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+      font-size: 0.88rem;
+      color: var(--wa-bubble-text);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      line-height: 1.45;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .wa-time {
+      position: absolute;
+      bottom: 4px;
+      right: 8px;
+      font-size: 0.65rem;
+      color: var(--wa-time-color);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .wa-checks {
+      color: #53bdeb;
+      font-weight: bold;
+    }
+
+    .btn-copy {
+      width: 100%;
+      background-color: #00a884;
+      color: #ffffff;
+      border: none;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 14px;
+      transition: background-color 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-copy:hover {
+      background-color: #008f70;
+    }
+
+    .char-counter {
+      font-size: 0.75rem;
+      color: var(--wa-header-sub);
+      margin-top: 10px;
+      text-align: right;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+<div class="main-container">
+
+  <!-- PANEL IZQUIERDO -->
+  <div class="panel">
+    <div class="panel-header">
+      <h1>Panel de Control Meteorológico</h1>
+      <div class="header-actions">
+        <button class="btn-toggle-theme" id="btnThemeToggle" onclick="toggleTheme()">Modo Oscuro</button>
+        <button class="btn-clear-all" onclick="borrarTodo()">Borrar Todo</button>
+      </div>
+    </div>
+
+    <!-- IDENTIFICACIÓN, MODELO Y FECHA DE EMISIÓN -->
+    <div class="card-section">
+      <div class="card-title">Identificación y Fecha</div>
+      <div class="grid-2" style="margin-bottom: 10px;">
+        <div class="field-group">
+          <label>N° IF</label>
+          <input type="text" id="numIF" value="544">
+        </div>
+        <div class="field-group">
+          <label>Sector / Incendio</label>
+          <input type="text" id="nombreSector" value="LAS CRUCES">
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom: 10px;">
+        <div class="field-group">
+          <label>Fecha</label>
+          <input type="date" id="fechaEmision">
+        </div>
+        <div class="field-group">
+          <label>Hora de Emisión</label>
+          <div style="display: flex; gap: 6px;">
+            <input type="time" id="horaEmision">
+            <button class="btn-time" onclick="capturarHoraActual()">Ahora</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Modelo Meteorológico</label>
+        <input type="text" id="modeloMeteo" value="GFS" placeholder="Ej: GFS / ECMWF / WRF">
+      </div>
+    </div>
+
+    <!-- CONDICIÓN SINÓPTICA -->
+    <div class="card-section">
+      <div class="card-title">Condición Sinóptica</div>
+      <div class="field-group">
+        <label>Detalle Sinóptico</label>
+        <input type="text" id="condicionSinoptica" value="Dorsal en altura" placeholder="Ej: Dorsal en altura">
+      </div>
+    </div>
+
+    <!-- TEMPERATURA -->
+    <div class="card-section">
+      <div class="card-title">T (Temperatura)</div>
+      <div class="grid-3">
+        <div class="field-group">
+          <label>T Actual (°C)</label>
+          <input type="number" id="tempActual" value="28">
+        </div>
+        <div class="field-group">
+          <label>T Max (°C)</label>
+          <input type="number" id="tempMax" value="30">
+        </div>
+        <div class="field-group">
+          <label>Hora T Max</label>
+          <input type="time" id="horaTempMax" value="16:00">
+        </div>
+      </div>
+    </div>
+
+    <!-- HUMEDAD RELATIVA Y COMBUSTIBLES -->
+    <div class="card-section">
+      <div class="card-title">HR (Humedad Relativa)</div>
+      <div class="grid-3" style="margin-bottom: 10px;">
+        <div class="field-group">
+          <label>HR Actual (%)</label>
+          <input type="number" id="hrActual" value="15">
+        </div>
+        <div class="field-group">
+          <label>Tendencia</label>
+          <select id="hrTendencia">
+            <option value="al alza">Al alza</option>
+            <option value="a la baja">A la baja</option>
+            <option value="estable">Estable</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>HR Max/Min (%)</label>
+          <input type="number" id="hrEsperada" value="47">
+        </div>
+      </div>
+      
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Hora Estimada</label>
+          <input type="time" id="hrHora" value="21:00">
+        </div>
+        <div class="field-group">
+          <label>Combustibles</label>
+          <select id="recuperacionCombustible">
+            <option value="Baja recuperación nocturna">Baja recuperación nocturna</option>
+            <option value="Nula recuperación nocturna">Nula recuperación nocturna</option>
+            <option value="Recuperación nocturna">Recuperación nocturna</option>
+            <option value="">Sin observación</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- HCFM -->
+    <div class="card-section">
+      <div class="card-title">HCFM (Humedad Combustible Fino Muerto)</div>
+      <div class="field-group">
+        <label>Porcentaje (%)</label>
+        <input type="number" id="hcfmValor" value="6" placeholder="Ej: 6">
+      </div>
+    </div>
+
+    <!-- VIENTO -->
+    <div class="card-section">
+      <div class="card-title">V (Viento)</div>
+      <div class="grid-3" style="margin-bottom: 10px;">
+        <div class="field-group">
+          <label>Velocidad (km/h)</label>
+          <input type="number" id="vVelocidad" value="11">
+        </div>
+        <div class="field-group">
+          <label>Tendencia</label>
+          <select id="vTendencia">
+            <option value="Se espera una disminución">Se espera una disminución</option>
+            <option value="Se espera un aumento">Se espera un aumento</option>
+            <option value="No se observan cambios">No se observan cambios</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Vel. Cambio (km/h)</label>
+          <input type="number" id="vVelCambio" value="7">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Hora Cambio</label>
+        <input type="time" id="vHoraCambio" value="18:00">
+      </div>
+    </div>
+
+    <!-- RACHAS -->
+    <div class="card-section">
+      <div class="card-title">Rachas</div>
+      <div class="grid-2" style="margin-bottom: 10px;">
+        <div class="field-group">
+          <label>Racha Act. (km/h)</label>
+          <input type="number" id="vRachaActual" value="12">
+        </div>
+        <div class="field-group">
+          <label>Hora Racha Act.</label>
+          <input type="time" id="vHoraRachaActual">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Racha Máx. (km/h)</label>
+          <input type="number" id="vRachaMax" value="13">
+        </div>
+        <div class="field-group">
+          <label>Hora Racha Máx</label>
+          <input type="time" id="vHoraRachaMax" value="17:00">
+        </div>
+      </div>
+    </div>
+
+    <!-- DIRECCIÓN DEL VIENTO (16 RUMBOS) -->
+    <div class="card-section">
+      <div class="card-title">Dir. V. (Dirección)</div>
+      <div class="grid-3">
+        <div class="field-group">
+          <label>Predominante</label>
+          <select id="dirPredominante">
+            <option value="N">N (Norte)</option>
+            <option value="NNE">NNE (Nor-noreste)</option>
+            <option value="NE">NE (Noreste)</option>
+            <option value="ENE">ENE (Este-noreste)</option>
+            <option value="E">E (Este)</option>
+            <option value="ESE">ESE (Este-sureste)</option>
+            <option value="SE">SE (Sureste)</option>
+            <option value="SSE">SSE (Sur-sureste)</option>
+            <option value="S">S (Sur)</option>
+            <option value="SSW">SSW (Sur-suroeste)</option>
+            <option value="SW" selected>SW (Suroeste)</option>
+            <option value="WSW">WSW (Oeste-suroeste)</option>
+            <option value="W">W (Oeste)</option>
+            <option value="WNW">WNW (Oeste-noroeste)</option>
+            <option value="NW">NW (Noroeste)</option>
+            <option value="NNW">NNW (Nor-noroeste)</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Rotación A</label>
+          <input type="text" id="dirRotacion" value="SSW–S" placeholder="Ej: SSW-S">
+        </div>
+        <div class="field-group">
+          <label>Hora Rotación</label>
+          <input type="time" id="dirHoraRotacion" value="18:00">
+        </div>
+      </div>
+    </div>
+
+    <!-- DIRECCIÓN DEL VIENTO LOCAL (16 RUMBOS) -->
+    <div class="card-section">
+      <div class="card-title">Dir. V. Local</div>
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Dirección Local</label>
+          <select id="dirVientoLocalSelect">
+            <option value="N">N (Norte)</option>
+            <option value="NNE">NNE (Nor-noreste)</option>
+            <option value="NE">NE (Noreste)</option>
+            <option value="ENE">ENE (Este-noreste)</option>
+            <option value="E">E (Este)</option>
+            <option value="ESE">ESE (Este-sureste)</option>
+            <option value="SE">SE (Sureste)</option>
+            <option value="SSE">SSE (Sur-sureste)</option>
+            <option value="S">S (Sur)</option>
+            <option value="SSW">SSW (Sur-suroeste)</option>
+            <option value="SW" selected>SW (Suroeste)</option>
+            <option value="WSW">WSW (Oeste-suroeste)</option>
+            <option value="W">W (Oeste)</option>
+            <option value="WNW">WNW (Oeste-noroeste)</option>
+            <option value="NW">NW (Noroeste)</option>
+            <option value="NNW">NNW (Nor-noroeste)</option>
+            <option value="">Personalizada...</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Detalle / Personalizado</label>
+          <input type="text" id="dirVientoLocalTexto" placeholder="Ej: Brisa de quebrada / SW">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PANEL DERECHO: PREVISUALIZACIÓN -->
+  <div class="panel panel-right">
+    <div class="panel-header">
+      <h1>Vista Previa Central</h1>
+    </div>
+
+    <div class="phone-mockup">
+      <div class="wa-header">
+        <!-- LOGO CONAF PALMA 1 VECTORIZADO -->
+        <svg class="wa-avatar-img" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="100" r="98" fill="#f4f4f4" />
+          <!-- Arco Rojo -->
+          <circle cx="100" cy="100" r="88" fill="none" stroke="#e32235" stroke-width="14" stroke-dasharray="386.4 552.9" stroke-dashoffset="-80" />
+          <!-- Arco Azul -->
+          <circle cx="100" cy="100" r="88" fill="none" stroke="#0066be" stroke-width="14" stroke-dasharray="166.5 552.9" stroke-dashoffset="200" />
+          <!-- Textos internos -->
+          <text x="100" y="76" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-size="28" font-weight="800" fill="#606466" text-anchor="middle">CONAF</text>
+          <text x="100" y="112" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-size="20" font-weight="700" fill="#606466" text-anchor="middle">PALMA 1</text>
+          <text x="100" y="142" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-size="14" font-weight="600" fill="#7d8184" text-anchor="middle">Coordinación 1</text>
+        </svg>
+
+        <div>
+          <div class="wa-title">PALMA 1 - CONAF</div>
+          <div class="wa-subtitle">En línea</div>
+        </div>
+      </div>
+
+      <div class="wa-body">
+        <div class="wa-bubble">
+          <div id="previewText"></div>
+          <div class="wa-time">
+            <span id="currentTime">--:--</span>
+            <span class="wa-checks">✓✓</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="char-counter"><span id="charCount">0</span> caracteres</div>
+
+    <button class="btn-copy" onclick="copiarTexto()">
+      Copiar Mensaje
+    </button>
+  </div>
+
+</div>
+
+<script>
+  function toggleTheme() {
+    const isDark = document.body.classList.toggle('dark-mode');
+    const btn = document.getElementById('btnThemeToggle');
+    btn.textContent = isDark ? 'Modo Claro' : 'Modo Oscuro';
+  }
+
+  function initDateTime() {
+    const now = new Date();
+    
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    document.getElementById('fechaEmision').value = `${year}-${month}-${day}`;
+
+    capturarHoraActual();
+  }
+
+  function capturarHoraActual() {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('horaEmision').value = `${hours}:${minutes}`;
+    document.getElementById('currentTime').textContent = `${hours}:${minutes}`;
+    updatePreview();
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  function capitalizeFirst(text) {
+    if (!text) return '';
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  function borrarTodo() {
+    document.getElementById('numIF').value = '';
+    document.getElementById('nombreSector').value = '';
+    document.getElementById('modeloMeteo').value = '';
+    document.getElementById('condicionSinoptica').value = '';
+    
+    document.getElementById('tempActual').value = '';
+    document.getElementById('tempMax').value = '';
+    document.getElementById('horaTempMax').value = '';
+
+    document.getElementById('hrActual').value = '';
+    document.getElementById('hrEsperada').value = '';
+    document.getElementById('hrHora').value = '';
+
+    document.getElementById('hcfmValor').value = '';
+    
+    document.getElementById('vVelocidad').value = '';
+    document.getElementById('vVelCambio').value = '';
+    document.getElementById('vHoraCambio').value = '';
+    
+    document.getElementById('vRachaActual').value = '';
+    document.getElementById('vHoraRachaActual').value = '';
+    document.getElementById('vRachaMax').value = '';
+    document.getElementById('vHoraRachaMax').value = '';
+    
+    document.getElementById('dirRotacion').value = '';
+    document.getElementById('dirHoraRotacion').value = '';
+
+    document.getElementById('dirVientoLocalSelect').value = '';
+    document.getElementById('dirVientoLocalTexto').value = '';
+
+    document.getElementById('recuperacionCombustible').value = '';
+    
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const numIF = document.getElementById('numIF').value.trim();
+    const sector = document.getElementById('nombreSector').value.trim();
+    const modeloMeteo = document.getElementById('modeloMeteo').value.trim();
+    const fecha = document.getElementById('fechaEmision').value;
+    const horaEmision = document.getElementById('horaEmision').value;
+
+    const condicionSinoptica = document.getElementById('condicionSinoptica').value.trim();
+
+    const tempActual = document.getElementById('tempActual').value.trim();
+    const tempMax = document.getElementById('tempMax').value.trim();
+    const horaTempMax = document.getElementById('horaTempMax').value;
+
+    const hrActual = document.getElementById('hrActual').value.trim();
+    const hrTendencia = document.getElementById('hrTendencia').value;
+    const hrEsperada = document.getElementById('hrEsperada').value.trim();
+    const hrHora = document.getElementById('hrHora').value;
+    const recCombustible = document.getElementById('recuperacionCombustible').value;
+
+    const hcfmValor = document.getElementById('hcfmValor').value.trim();
+
+    const vVelocidad = document.getElementById('vVelocidad').value.trim();
+    const vTendencia = document.getElementById('vTendencia').value;
+    const vVelCambio = document.getElementById('vVelCambio').value.trim();
+    const vHoraCambio = document.getElementById('vHoraCambio').value;
+    
+    const vRachaActual = document.getElementById('vRachaActual').value.trim();
+    const vHoraRachaActual = document.getElementById('vHoraRachaActual').value;
+    const vRachaMax = document.getElementById('vRachaMax').value.trim();
+    const vHoraRachaMax = document.getElementById('vHoraRachaMax').value;
+
+    const dirPredominante = document.getElementById('dirPredominante').value;
+    const dirRotacion = document.getElementById('dirRotacion').value.trim();
+    const dirHoraRotacion = document.getElementById('dirHoraRotacion').value;
+
+    const dirVientoLocalSelect = document.getElementById('dirVientoLocalSelect').value;
+    const dirVientoLocalTexto = document.getElementById('dirVientoLocalTexto').value.trim();
+
+    let lines = [];
+
+    // TÍTULO DE ENCABEZADO
+    let header = 'PREVISIÓN METEOROLÓGICA';
+    if (numIF || sector) {
+      header += ` – IF`;
+      if (numIF) header += ` N° ${numIF}`;
+      if (sector) header += ` - ${sector.toUpperCase()}`;
+    }
+    lines.push(`*${header}*`);
+
+    // FECHA
+    if (fecha || horaEmision) {
+      let emisionStr = 'FECHA:';
+      if (fecha) emisionStr += ` ${formatDate(fecha)}`;
+      if (horaEmision) emisionStr += ` - ${horaEmision} hrs`;
+      lines.push(emisionStr);
+    }
+
+    // MODELO METEOROLÓGICO
+    if (modeloMeteo) {
+      lines.push(`Modelo: ${modeloMeteo.toUpperCase()}`);
+    }
+
+    lines.push('');
+
+    // CONDICIÓN SINÓPTICA
+    if (condicionSinoptica) {
+      lines.push(`* *Condición sinóptica:* ${capitalizeFirst(condicionSinoptica)}`);
+    }
+
+    // T (TEMPERATURA)
+    if (tempActual || tempMax) {
+      let tempLine = `* *T:*`;
+      if (tempActual) tempLine += ` Actual: ${tempActual} °C`;
+      if (tempMax) {
+        tempLine += tempActual ? ` | Max: ${tempMax} °C` : ` Max: ${tempMax} °C`;
+        if (horaTempMax) tempLine += ` a las ${horaTempMax} hrs`;
+      }
+      lines.push(tempLine);
+    }
+
+    // HR (SIN SIGNO DE PORCENTAJE EN LA ETIQUETA)
+    if (hrActual) {
+      let hrLine = `* *HR:* ${hrActual} %`;
+      let hrDetalles = [];
+      
+      if (hrTendencia && hrEsperada) {
+        let detalleTend = `Tendencia ${hrTendencia} hasta ${hrEsperada} %`;
+        if (hrHora) detalleTend += ` a las ${hrHora} hrs`;
+        hrDetalles.push(detalleTend);
+      }
+
+      if (recCombustible) {
+        hrDetalles.push(`Se espera una ${recCombustible.toLowerCase()}`);
+      }
+
+      if (hrDetalles.length > 0) {
+        hrLine += ` (${hrDetalles.join(' | ')})`;
+      }
+
+      lines.push(hrLine);
+    }
+
+    // HCFM
+    if (hcfmValor) {
+      lines.push(`* *HCFM:* ${hcfmValor}%`);
+    }
+
+    // V (VIENTO)
+    if (vVelocidad) {
+      let vLine = `* *V:* ${vVelocidad} km/h`;
+      let vDetalles = [];
+
+      if (vTendencia === 'No se observan cambios') {
+        vDetalles.push('No se observan cambios');
+      } else if (vTendencia && vVelCambio) {
+        let detV = `${capitalizeFirst(vTendencia)} a ${vVelCambio} km/h`;
+        if (vHoraCambio) detV += ` a las ${vHoraCambio} hrs`;
+        vDetalles.push(detV);
+      }
+
+      if (vDetalles.length > 0) {
+        vLine += ` (${vDetalles.join(' | ')})`;
+      }
+
+      lines.push(vLine);
+    }
+
+    // RACHAS
+    if (vRachaActual || vRachaMax) {
+      let rachaLine = `* *Rachas:*`;
+      
+      if (vRachaActual) {
+        rachaLine += ` ${vRachaActual} km/h`;
+        if (vHoraRachaActual) {
+          rachaLine += ` a las ${vHoraRachaActual} hrs`;
+        }
+      }
+
+      if (vRachaMax) {
+        let maxStr = `Máx ${vRachaMax} km/h`;
+        if (vHoraRachaMax) maxStr += ` a las ${vHoraRachaMax} hrs`;
+        
+        rachaLine += vRachaActual ? ` (${maxStr})` : ` ${maxStr}`;
+      }
+
+      lines.push(rachaLine);
+    }
+
+    // DIR. V.
+    if (dirPredominante) {
+      let dirLine = `* *Dir. V.:* ${dirPredominante}`;
+      if (dirRotacion) {
+        let rotStr = `Rotación a ${dirRotacion}`;
+        if (dirHoraRotacion) rotStr += ` desde las ${dirHoraRotacion} hrs`;
+        dirLine += ` (${rotStr})`;
+      }
+      lines.push(dirLine);
+    }
+
+    // DIR. V. LOCAL
+    const dirLocalFinal = dirVientoLocalTexto || dirVientoLocalSelect;
+    if (dirLocalFinal) {
+      lines.push(`* *Dir. V. Local:* ${capitalizeFirst(dirLocalFinal)}`);
+    }
+
+    // FIRMA INSTITUCIONAL FIJA
+    lines.push('');
+    lines.push('*Unidad de Análisis y Predicción de Incendios Forestales Valparaíso*');
+
+    const fullText = lines.join('\n');
+    document.getElementById('previewText').textContent = fullText;
+    document.getElementById('charCount').textContent = fullText.length;
+  }
+
+  function copiarTexto() {
+    const texto = document.getElementById('previewText').textContent;
+    navigator.clipboard.writeText(texto).then(() => {
+      const btn = document.querySelector('.btn-copy');
+      const prevText = btn.innerHTML;
+      btn.innerHTML = '¡Copiado al Portapapeles!';
+      btn.style.backgroundColor = '#128c7e';
+      setTimeout(() => {
+        btn.innerHTML = prevText;
+        btn.style.backgroundColor = '#00a884';
+      }, 2000);
+    });
+  }
+
+  initDateTime();
+
+  document.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input', updatePreview);
+    el.addEventListener('change', updatePreview);
+  });
+</script>
+
+</body>
+</html>
