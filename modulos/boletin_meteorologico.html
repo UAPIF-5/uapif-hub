@@ -206,11 +206,10 @@
       background-color: #fecdd3;
       color: #9f1239;
       font-weight: 900;
-      white-space: normal;
-      line-height: 1.25;
+      white-space: nowrap;
       text-align: center;
       vertical-align: middle;
-      padding: 4px 6px !important;
+      padding: 5px 4px !important;
     }
     .th-main-rojo {
       background-color: #dc2626;
@@ -615,7 +614,7 @@
           <th rowspan="2" class="th-main-prov">PROVINCIAS</th>
           <th colspan="4" class="th-main-temp header-block-temp">TEMPERATURA (°C)</th>
           <th colspan="4" class="th-main-viento header-block-viento">VELOCIDAD Y COMPONENTE DE VIENTO</th>
-          <th colspan="4" class="th-main-hr header-block-hr"><div style="line-height:1.25; text-align:center;">HR% (MÍNIMA (DÍA) /<br>MÁXIMA (RECUPERACIÓN NOCHE))</div></th>
+          <th colspan="4" class="th-main-hr header-block-hr">HR% (MÍNIMA (DÍA) / MÁXIMA (NOCHE))</th>
           <th colspan="4" class="th-main-rojo header-block-rojo">BOTÓN ROJO</th>
         </tr>
         <tr id="fechas-row">
@@ -1135,7 +1134,7 @@ function buildExportTableElement() {
     <th rowspan="2" class="th-main-prov" style="background:#f8fafc; border:1px solid #0f172a; padding:5px 3px; font-weight:800; width:170px;">PROVINCIAS</th>
     <th colspan="${currentHorizonte}" class="th-main-temp" style="background:#fed7aa; color:#7c2d12; border:1px solid #0f172a; padding:5px 3px; font-weight:900; white-space:nowrap; text-align:center; vertical-align:middle;">TEMPERATURA (°C)</th>
     <th colspan="${currentHorizonte}" class="th-main-viento" style="background:#cffafe; color:#155e75; border:1px solid #0f172a; padding:5px 3px; font-weight:900; white-space:nowrap;">VELOCIDAD Y COMPONENTE DE VIENTO</th>
-    <th colspan="${currentHorizonte}" class="th-main-hr" style="background:#fecdd3; color:#9f1239; border:1px solid #0f172a; padding:4px 6px; font-weight:900; white-space:normal; line-height:1.25; text-align:center; vertical-align:middle;"><div style="line-height:1.25; text-align:center;">HR% (MÍNIMA (DÍA) /<br>MÁXIMA (RECUPERACIÓN NOCHE))</div></th>
+    <th colspan="${currentHorizonte}" class="th-main-hr" style="background:#fecdd3; color:#9f1239; border:1px solid #0f172a; padding:5px 4px; font-weight:900; white-space:nowrap; text-align:center; vertical-align:middle;">HR% (MÍNIMA (DÍA) / MÁXIMA (NOCHE))</th>
     <th colspan="${currentHorizonte}" class="th-main-rojo" style="background:#dc2626; color:#ffffff; border:1px solid #0f172a; padding:5px 3px; font-weight:900; white-space:nowrap;">BOTÓN ROJO</th>
   `;
   thead.appendChild(tr1);
