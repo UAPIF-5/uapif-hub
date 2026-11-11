@@ -28,6 +28,55 @@
     .user-select-none {
       user-select: none;
     }
+    /* Estilos Drag and Drop */
+    .card-draggable {
+      cursor: grab;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .card-draggable:active {
+      cursor: grabbing;
+    }
+    .card-dragging {
+      opacity: 0.45;
+      transform: scale(0.97);
+    }
+    .card-drag-over {
+      outline: 2px dashed #059669;
+      outline-offset: 4px;
+    }
+    /* Insignias de esquina (NEW Ribbon / Badge) */
+    .badge-corner-new {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45);
+      border: 1.5px solid #ffffff;
+      z-index: 20;
+      text-transform: uppercase;
+    }
+    .badge-corner-prueba {
+      position: absolute;
+      top: -6px;
+      left: -6px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.45);
+      border: 1.5px solid #ffffff;
+      z-index: 20;
+      text-transform: uppercase;
+    }
   </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
@@ -69,14 +118,14 @@
             <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
           </button>
 
-          <!-- Botón de Respaldo JSON -->
-          <button onclick="exportarBackupJSON()" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition">
-            <i data-lucide="download" class="w-4 h-4"></i> Respaldar
+          <!-- Botón Restablecer Orden -->
+          <button onclick="restablecerHub()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition" title="Restablecer orden y colores originales">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Restablecer
           </button>
 
           <!-- Botón Añadir Módulo -->
           <button onclick="abrirModalNuevo()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition">
-            <i data-lucide="plus-circle" class="w-4 h-4"></i> <span>Añadir HTML</span>
+            <i data-lucide="plus-circle" class="w-4 h-4"></i> <span>Añadir Herramienta</span>
           </button>
         </div>
 
@@ -87,7 +136,7 @@
   <!-- CUERPO PRINCIPAL -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-    <!-- BARRA DE BÚSQUEDA Y FILTROS -->
+    <!-- BARRA DE BÚSQUEDA Y CONTROLES DE VISTA -->
     <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
       
       <!-- Búsqueda en vivo -->
@@ -96,23 +145,17 @@
         <input 
           type="text" 
           id="searchInput" 
-          placeholder="Buscar herramientas, características o rutas..." 
+          placeholder="Buscar herramientas o archivos..." 
           oninput="filtrarProyectos()"
           class="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition"
         >
       </div>
 
-      <!-- Filtros por categoría y switch de vista -->
-      <div class="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-        <div id="categoryChips" class="flex items-center gap-1.5">
-          <!-- Categorías generadas por JS -->
-        </div>
-
-        <div class="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
-
+      <!-- Controles de vista (Lista / Cuadrícula) -->
+      <div class="flex items-center gap-3">
         <!-- Alternador Vista Grid / Lista -->
         <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-          <button id="viewGridBtn" onclick="cambiarVista('grid')" class="p-1.5 rounded-md text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white bg-white dark:bg-slate-700 shadow-xs" title="Vista cuadrícula">
+          <button id="viewGridBtn" onclick="cambiarVista('grid')" class="p-1.5 rounded-md text-slate-700 dark:text-white bg-white dark:bg-slate-700 shadow-xs" title="Vista cuadrícula">
             <i data-lucide="layout-grid" class="w-4 h-4"></i>
           </button>
           <button id="viewListBtn" onclick="cambiarVista('list')" class="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" title="Vista lista">
@@ -123,18 +166,18 @@
 
     </div>
 
-    <!-- NOTA DE NAVEGACIÓN -->
-    <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+    <!-- NOTA DE NAVEGACIÓN Y DRAG & DROP -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1 gap-2">
       <div class="flex items-center gap-2">
-        <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-black text-[10px]">💡</span>
-        <span>Haz <b>doble clic</b> en cualquier tarjeta o fila para abrirla directamente en una nueva pestaña.</span>
+        <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-black text-[10px]">🖐️</span>
+        <span><b>Arrastra y suelta</b> cualquier tarjeta para reordenarla como quieras. Tu configuración y colores quedan guardados en este computador.</span>
       </div>
-      <span id="counterText" class="font-medium">7 herramientas activas</span>
+      <span id="counterText" class="font-medium whitespace-nowrap">7 herramientas activas</span>
     </div>
 
-    <!-- CONTENEDOR DE TARJETAS / LISTA -->
+    <!-- CONTENEDOR DE TARJETAS / LISTA (DRAGGABLE) -->
     <div id="projectsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <!-- Inyectado por JS -->
+      <!-- Inyectado dinámicamente por JS con Drag & Drop -->
     </div>
 
   </main>
@@ -171,12 +214,67 @@
     </div>
   </div>
 
-  <!-- MODAL: NUEVA HERRAMIENTA -->
+  <!-- MODAL: EDITAR TARJETA / PERSONALIZAR COLOR -->
+  <div id="editToolModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+        <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="palette" class="w-5 h-5 text-emerald-600"></i> Personalizar Herramienta
+        </h3>
+        <button onclick="cerrarModalEditar()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="editToolForm" onsubmit="guardarEdicionTarjeta(event)" class="space-y-3.5 text-xs sm:text-sm">
+        <input type="hidden" id="editToolId">
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre / Título</label>
+          <input type="text" id="editToolTitle" required class="w-full px-3 py-2 border rounded-lg dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Descripción</label>
+          <textarea id="editToolDesc" rows="2" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Color de Acento / Borde de la Tarjeta</label>
+          <div class="flex items-center gap-2 mb-2">
+            <input type="color" id="editToolColorPicker" class="w-10 h-10 rounded border border-slate-300 cursor-pointer">
+            <span class="text-xs text-slate-500 dark:text-slate-400">Selecciona cualquier color personalizado</span>
+          </div>
+          <!-- Paleta de accesos rápidos -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button type="button" onclick="aplicarColorRapido('#10b981')" class="w-6 h-6 rounded-full bg-emerald-500 hover:scale-110 transition border border-white shadow-xs" title="Esmeralda"></button>
+            <button type="button" onclick="aplicarColorRapido('#0284c7')" class="w-6 h-6 rounded-full bg-sky-600 hover:scale-110 transition border border-white shadow-xs" title="Celeste"></button>
+            <button type="button" onclick="aplicarColorRapido('#6366f1')" class="w-6 h-6 rounded-full bg-indigo-500 hover:scale-110 transition border border-white shadow-xs" title="Índigo"></button>
+            <button type="button" onclick="aplicarColorRapido('#f59e0b')" class="w-6 h-6 rounded-full bg-amber-500 hover:scale-110 transition border border-white shadow-xs" title="Ámbar"></button>
+            <button type="button" onclick="aplicarColorRapido('#ef4444')" class="w-6 h-6 rounded-full bg-red-500 hover:scale-110 transition border border-white shadow-xs" title="Rojo"></button>
+            <button type="button" onclick="aplicarColorRapido('#8b5cf6')" class="w-6 h-6 rounded-full bg-purple-500 hover:scale-110 transition border border-white shadow-xs" title="Púrpura"></button>
+            <button type="button" onclick="aplicarColorRapido('#14b8a6')" class="w-6 h-6 rounded-full bg-teal-500 hover:scale-110 transition border border-white shadow-xs" title="Teal"></button>
+            <button type="button" onclick="aplicarColorRapido('')" class="px-2 py-1 text-[11px] rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700">Por defecto</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
+          <button type="button" id="btnEliminarPersonalizada" onclick="eliminarTarjetaPersonalizada()" class="text-xs text-red-600 hover:text-red-700 font-semibold hidden">
+            Eliminar Herramienta
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" onclick="cerrarModalEditar()" class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100">Cancelar</button>
+            <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold">Guardar Cambios</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR NUEVA HERRAMIENTA -->
   <div id="newToolModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
         <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-          <i data-lucide="plus" class="w-5 h-5 text-emerald-600"></i> Registrar Nuevo Módulo HTML
+          <i data-lucide="plus" class="w-5 h-5 text-emerald-600"></i> Registrar Nueva Herramienta HTML
         </h3>
         <button onclick="cerrarModalNuevo()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
@@ -208,30 +306,31 @@
               <option value="message-square">message-square (WhatsApp / Alertas)</option>
               <option value="radio">radio (Transmisión / Radio)</option>
               <option value="cloud-sun">cloud-sun (Meteorología)</option>
+              <option value="cpu">cpu (Automático / Computacional)</option>
             </select>
           </div>
         </div>
 
         <div>
-          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Descripción</label>
-          <textarea id="toolDesc" rows="2" placeholder="Resumen del funcionamiento y datos utilizados..." class="w-full px-3 py-2 border rounded-lg dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white"></textarea>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Color de la Tarjeta</label>
+          <input type="color" id="toolColor" value="#059669" class="w-10 h-10 rounded border border-slate-300 cursor-pointer">
         </div>
 
         <div>
-          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Características Principales (separadas por coma)</label>
-          <input type="text" id="toolFeatures" placeholder="Ej: Cálculo en tiempo real, Exportación Excel, Mapa interactivo" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white">
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Descripción</label>
+          <textarea id="toolDesc" rows="2" placeholder="Resumen del funcionamiento..." class="w-full px-3 py-2 border rounded-lg dark:bg-slate-950 dark:border-slate-700 text-slate-900 dark:text-white"></textarea>
         </div>
 
         <div class="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
           <button type="button" onclick="cerrarModalNuevo()" class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100">Cancelar</button>
-          <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold">Guardar Módulo</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold">Guardar y Añadir</button>
         </div>
       </form>
     </div>
   </div>
 
   <script>
-    // 6 HERRAMIENTAS CON TÍTULOS LIMPIOS Y CARACTERÍSTICAS DETALLADAS
+    // 7 HERRAMIENTAS BASE DEFINITIVAS
     const DEFAULT_MODULES = [
       {
         id: "mod-1",
@@ -239,15 +338,10 @@
         category: "Humedad y Combustibles",
         url: "./modulos/calculadora_hcfm.html",
         icon: "flame",
-        badge: "Combustibles",
-        badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800",
         desc: "Cálculo técnico y operativo de la Humedad del Combustible Fino Muerto (1h) y Probabilidad de Ignición de acuerdo con tablas institucionales de CONAF Valparaíso.",
-        features: [
-          "Cálculo automático de HCFM final e ignición",
-          "Ajuste por orientación, pendiente y sombra",
-          "Semáforo de riesgo y desglose didáctico paso a paso",
-          "Sincronización automática de fecha y hora solar"
-        ]
+        isNew: false,
+        isPrueba: false,
+        customColor: ""
       },
       {
         id: "mod-2",
@@ -255,15 +349,10 @@
         category: "Pronóstico y Alertas",
         url: "./modulos/boletin_meteorologico.html",
         icon: "cloud-sun",
-        badge: "Exportable PNG/XLS",
-        badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-800",
         desc: "Matriz interactiva de pronóstico meteorológico a 3 y 4 días para 10 sectores provinciales con generación directa de reportes oficiales.",
-        features: [
-          "Matriz de 10 sectores provinciales y 4 días",
-          "Alertas de color: T > 30°C, Viento > 30 km/h, HR < 30%",
-          "Gestión y asignación de comunas en Botón Rojo",
-          "Exportación a imagen PNG Ultra HD y hoja Excel / Sheets"
-        ]
+        isNew: false,
+        isPrueba: false,
+        customColor: ""
       },
       {
         id: "mod-3",
@@ -271,15 +360,10 @@
         category: "Comunicaciones y Alertas",
         url: "./modulos/mensaje_condiciones_met.html",
         icon: "message-square",
-        badge: "Alerta Temprana",
-        badgeColor: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-300 dark:border-teal-800",
         desc: "Asistente para la redacción y despacho rápido de partes meteorológicos diarios y Alertas Tempranas hacia grupos de mando y coordinación.",
-        features: [
-          "Simulador en tiempo real con estética de chat",
-          "Selector múltiple de comunas agrupadas por provincia",
-          "Horas críticas, HCFM, viento, T y humedad relativa",
-          "Botón de copiado con formato y emojis optimizados"
-        ]
+        isNew: false,
+        isPrueba: false,
+        customColor: ""
       },
       {
         id: "mod-4",
@@ -287,15 +371,10 @@
         category: "Comunicaciones y Alertas",
         url: "./modulos/prev_meteorologia.html",
         icon: "radio",
-        badge: "Despacho Técnico",
-        badgeColor: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800",
         desc: "Generador de previsión meteorológica específica por incendio (N° IF, modelo GFS/WRF, condición sinóptica, rumbos de viento y rachas).",
-        features: [
-          "Ficha por número de incendio y sector operativo",
-          "Desglose de temperatura, HR y viento con rachas máximas",
-          "Rosa de 16 rumbos con horas estimadas de rotación",
-          "Integración de modelo meteorológico y condición sinóptica"
-        ]
+        isNew: false,
+        isPrueba: false,
+        customColor: ""
       },
       {
         id: "mod-5",
@@ -303,15 +382,10 @@
         category: "Comportamiento y Viento",
         url: "./modulos/calculo_vel_propagacion.html",
         icon: "wind",
-        badge: "Visor GIS / KMZ",
-        badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800",
         desc: "Plataforma cartográfica interactiva para medir la velocidad de avance del frente de fuego entre dos puntos temporales conocidos.",
-        features: [
-          "Regla interactiva entre Punto A (origen) y Punto B (frente)",
-          "Clasificación ROS: Lenta, Media, Media-Alta, Alta, Extrema",
-          "Proyección de avance futuro (+30m, +1h, +2h)",
-          "Lector rápido de perímetros KMZ/KML y slider temporal"
-        ]
+        isNew: false,
+        isPrueba: false,
+        customColor: ""
       },
       {
         id: "mod-6",
@@ -319,46 +393,55 @@
         category: "Cartografía y Riesgo",
         url: "./modulos/visor_infraestructura_critica_valparaiso.html",
         icon: "map-pin",
-        badge: "Regional Valparaíso",
-        badgeColor: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-800",
         desc: "Sistema de Información Territorial para la identificación y resguardo de instalaciones estratégicas ante amenazas de incendios forestales.",
-        features: [
-          "Capas: Salud, Educación, Antenas, Servicentros, Eléctricas",
-          "Capa de Campamentos vulnerables y redes lineales (vial/oleoductos)",
-          "Análisis de radio de afectación (Buffer) en metros o km",
-          "Buscador de coordenadas UTM (Huso 19S) y Geográficas WGS84",
+        isNew: false,
+        isPrueba: false,
+        customColor: ""
+      },
       {
         id: "mod-7",
         title: "Previsión Meteorológica Automática",
         category: "Comunicaciones y Alertas",
         url: "./modulos/prevision_meteorologica_auto.html",
         icon: "cpu",
-        badge: "En Prueba",
-        badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800",
         desc: "Generador automatizado de despachos técnicos de incendios forestales mediante conexión directa a Open-Meteo API v1 y corrección DEM.",
-        features: [
-          "Pronóstico automático mediante Open-Meteo API v1 (GFS, ECMWF, ICON)",
-          "Corrección orográfica por elevación DEM (temperatura y punto de rocío)",
-          "Cálculo psicrométrico Magnus-Tetens y modelo Van Wagner de HCFM",
-          "Meteograma operativo exportable en alta resolución (1200x780 px)"
-        ]
-      }
-    ]
+        isNew: true,      // Lleva NEW en la esquina
+        isPrueba: true,   // Lleva etiqueta de prueba
+        customColor: ""
       }
     ];
 
     let projects = [];
-    let currentCategory = "ALL";
     let currentView = "grid";
+    let draggedItemIndex = null;
 
     // INICIALIZACIÓN
     function inicializarHub() {
-      // Clave v4 para asegurar que tome la versión con características añadidas
-      const saved = localStorage.getItem('uapif_hub_tools_v5');
+      const STORAGE_KEY = 'uapif_hub_tools_v14_custom';
+      const saved = localStorage.getItem(STORAGE_KEY);
+      
       if (saved) {
-        try { projects = JSON.parse(saved); } catch(e) { projects = [...DEFAULT_MODULES]; }
+        try {
+          const parsed = JSON.parse(saved);
+          // Mapeamos para garantizar que las 7 herramientas existan aunque falte alguna en storage
+          const idsMap = new Map(parsed.map(p => [p.id, p]));
+          projects = [];
+          
+          parsed.forEach(p => {
+            projects.push(p);
+          });
+
+          // Agregar por si falta alguna de DEFAULT_MODULES
+          DEFAULT_MODULES.forEach(def => {
+            if (!idsMap.has(def.id)) {
+              projects.push({...def});
+            }
+          });
+        } catch(e) {
+          projects = JSON.parse(JSON.stringify(DEFAULT_MODULES));
+        }
       } else {
-        projects = [...DEFAULT_MODULES];
+        projects = JSON.parse(JSON.stringify(DEFAULT_MODULES));
         guardarEnStorage();
       }
 
@@ -366,12 +449,19 @@
       cambiarVista(currentView, false);
 
       initTheme();
-      renderizarCategorias();
       renderizarProyectos();
     }
 
     function guardarEnStorage() {
-      localStorage.setItem('uapif_hub_tools_v5', JSON.stringify(projects));
+      localStorage.setItem('uapif_hub_tools_v14_custom', JSON.stringify(projects));
+    }
+
+    function restablecerHub() {
+      if (confirm("¿Deseas restablecer el orden y los colores predeterminados en este computador?")) {
+        projects = JSON.parse(JSON.stringify(DEFAULT_MODULES));
+        guardarEnStorage();
+        renderizarProyectos();
+      }
     }
 
     // ABRIR PROYECTO (DOBLE CLIC NATIVO)
@@ -380,50 +470,19 @@
       window.open(url, '_blank', 'noopener,noreferrer');
     }
 
-    // RENDERIZAR CATEGORÍAS
-    function renderizarCategorias() {
-      const categoriesSet = new Set(projects.map(p => p.category));
-      const categories = ["ALL", ...Array.from(categoriesSet)];
-      const container = document.getElementById('categoryChips');
-      container.innerHTML = '';
-
-      categories.forEach(cat => {
-        const btn = document.createElement('button');
-        const count = cat === "ALL" ? projects.length : projects.filter(p => p.category === cat).length;
-        const isActive = cat === currentCategory;
-
-        btn.className = `px-2.5 py-1 text-xs font-semibold rounded-lg transition user-select-none whitespace-nowrap ${
-          isActive 
-            ? 'bg-emerald-700 text-white shadow-xs' 
-            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-        }`;
-        btn.textContent = cat === "ALL" ? `Todas (${count})` : `${cat} (${count})`;
-        btn.onclick = () => {
-          currentCategory = cat;
-          renderizarCategorias();
-          renderizarProyectos();
-        };
-        container.appendChild(btn);
-      });
-    }
-
-    // RENDERIZAR PROYECTOS CON CARACTERÍSTICAS
+    // RENDERIZAR PROYECTOS CON DRAG & DROP Y PERSONALIZACIÓN
     function renderizarProyectos() {
       const container = document.getElementById('projectsContainer');
       const search = (document.getElementById('searchInput').value || '').toLowerCase().trim();
 
       const filtered = projects.filter(p => {
-        const matchCat = currentCategory === "ALL" || p.category === currentCategory;
-        const featuresStr = (p.features || []).join(' ').toLowerCase();
-        const matchSearch = p.title.toLowerCase().includes(search) || 
-                            p.desc.toLowerCase().includes(search) || 
-                            p.category.toLowerCase().includes(search) ||
-                            p.url.toLowerCase().includes(search) ||
-                            featuresStr.includes(search);
-        return matchCat && matchSearch;
+        return p.title.toLowerCase().includes(search) || 
+               p.desc.toLowerCase().includes(search) || 
+               p.category.toLowerCase().includes(search) ||
+               p.url.toLowerCase().includes(search);
       });
 
-      document.getElementById('counterText').textContent = `${filtered.length} herramienta${filtered.length === 1 ? '' : 's'} mostrada${filtered.length === 1 ? '' : 's'}`;
+      document.getElementById('counterText').textContent = `${filtered.length} herramienta${filtered.length === 1 ? '' : 's'} disponible${filtered.length === 1 ? '' : 's'}`;
       container.innerHTML = '';
 
       if (filtered.length === 0) {
@@ -437,42 +496,63 @@
         return;
       }
 
+      const isSearchActive = search.length > 0;
+
       if (currentView === 'grid') {
         container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5";
-        filtered.forEach(item => {
+        filtered.forEach((item, index) => {
           const card = document.createElement('div');
-          card.className = "bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all flex flex-col justify-between cursor-pointer group user-select-none";
           
-          // EVENTO DE DOBLE CLIC EN TODA LA TARJETA
-          card.ondblclick = () => abrirProyectoEnPestana(item.url);
+          // Estilo y color personalizado
+          const customStyle = item.customColor ? `style="border-color: ${item.customColor}; box-shadow: 0 4px 12px ${item.customColor}22;"` : '';
+          const iconCustomStyle = item.customColor ? `style="color: ${item.customColor}; background: ${item.customColor}15; border-color: ${item.customColor}40;"` : '';
 
-          // Construcción de la lista de características destacadas
-          let featuresHtml = '';
-          if (item.features && item.features.length > 0) {
-            featuresHtml = `
-              <div class="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Características principales:</span>
-                <ul class="space-y-1">
-                  ${item.features.map(f => `
-                    <li class="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                      <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"></i>
-                      <span class="leading-snug">${f}</span>
-                    </li>
-                  `).join('')}
-                </ul>
-              </div>
-            `;
+          card.className = "card-draggable relative bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group user-select-none";
+          if (customStyle) card.setAttribute('style', customStyle.replace('style="', '').replace('"', ''));
+
+          // Insignias en esquinas:
+          let badgesCornerHtml = '';
+          if (item.isPrueba) {
+            badgesCornerHtml += `<div class="badge-corner-prueba">EN PRUEBA</div>`;
+          }
+          if (item.isNew) {
+            badgesCornerHtml += `<div class="badge-corner-new">NEW</div>`;
           }
 
+          // DRAG AND DROP HANDLERS
+          if (!isSearchActive) {
+            card.draggable = true;
+            card.dataset.index = index;
+
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragover', handleDragOver);
+            card.addEventListener('dragenter', handleDragEnter);
+            card.addEventListener('dragleave', handleDragLeave);
+            card.addEventListener('drop', handleDrop);
+            card.addEventListener('dragend', handleDragEnd);
+          }
+
+          // DOBLE CLIC PARA ABRIR
+          card.ondblclick = () => abrirProyectoEnPestana(item.url);
+
           card.innerHTML = `
+            ${badgesCornerHtml}
             <div class="space-y-3">
               <div class="flex items-start justify-between gap-2">
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <!-- Icono de categoría con color institucional o personalizado -->
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0" ${iconCustomStyle}>
                   <i data-lucide="${item.icon || 'file-code'}" class="w-5 h-5"></i>
                 </div>
-                <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300'}">
-                  ${item.badge || item.category}
-                </span>
+
+                <!-- Botones de configuración rápida en tarjeta -->
+                <div class="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition" onclick="event.stopPropagation()">
+                  <button onclick="abrirModalEditar('${item.id}')" class="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Configurar y cambiar color">
+                    <i data-lucide="palette" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <div class="cursor-grab active:cursor-grabbing p-1.5 text-slate-300 hover:text-slate-600 dark:hover:text-slate-200" title="Arrastrar para mover">
+                    <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -483,12 +563,10 @@
                   ${item.desc}
                 </p>
               </div>
-
-              ${featuresHtml}
             </div>
 
             <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <span class="text-[11px] font-mono text-slate-400 truncate max-w-[150px]" title="${item.url}">
+              <span class="text-[11px] font-mono text-slate-400 truncate max-w-[140px]" title="${item.url}">
                 ${item.url}
               </span>
 
@@ -505,19 +583,41 @@
           container.appendChild(card);
         });
       } else {
-        // VISTA LISTA
+        // VISTA LISTA (TAMBIÉN REORDENABLE)
         container.className = "flex flex-col gap-2.5";
-        filtered.forEach(item => {
+        filtered.forEach((item, index) => {
           const row = document.createElement('div');
-          row.className = "bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition flex items-center justify-between gap-4 cursor-pointer group user-select-none";
           
+          const customStyle = item.customColor ? `style="border-color: ${item.customColor}; box-shadow: 0 2px 8px ${item.customColor}22;"` : '';
+          const iconCustomStyle = item.customColor ? `style="color: ${item.customColor}; background: ${item.customColor}15; border-color: ${item.customColor}40;"` : '';
+
+          row.className = "card-draggable relative bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-emerald-500/50 transition flex items-center justify-between gap-4 cursor-pointer group user-select-none";
+          if (customStyle) row.setAttribute('style', customStyle.replace('style="', '').replace('"', ''));
+
+          if (!isSearchActive) {
+            row.draggable = true;
+            row.dataset.index = index;
+
+            row.addEventListener('dragstart', handleDragStart);
+            row.addEventListener('dragover', handleDragOver);
+            row.addEventListener('dragenter', handleDragEnter);
+            row.addEventListener('dragleave', handleDragLeave);
+            row.addEventListener('drop', handleDrop);
+            row.addEventListener('dragend', handleDragEnd);
+          }
+
           row.ondblclick = () => abrirProyectoEnPestana(item.url);
 
-          const featuresShort = (item.features || []).slice(0, 2).join(' &bull; ');
+          let badgesListHtml = '';
+          if (item.isPrueba) badgesListHtml += `<span class="bg-amber-100 text-amber-800 text-[10px] font-black px-1.5 py-0.5 rounded border border-amber-300">EN PRUEBA</span>`;
+          if (item.isNew) badgesListHtml += `<span class="bg-red-100 text-red-800 text-[10px] font-black px-1.5 py-0.5 rounded border border-red-300">NEW</span>`;
 
           row.innerHTML = `
             <div class="flex items-center gap-3.5 min-w-0">
-              <div class="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+              <div class="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-600 dark:hover:text-slate-200" title="Arrastrar para ordenar">
+                <i data-lucide="grip-vertical" class="w-4 h-4"></i>
+              </div>
+              <div class="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0" ${iconCustomStyle}>
                 <i data-lucide="${item.icon || 'file-code'}" class="w-4 h-4"></i>
               </div>
               <div class="min-w-0">
@@ -525,19 +625,18 @@
                   <h4 class="font-bold text-sm text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
                     ${item.title}
                   </h4>
-                  <span class="text-[10px] font-bold px-2 py-0.2 rounded-full border ${item.badgeColor || 'bg-slate-100 text-slate-600'}">
-                    ${item.category}
-                  </span>
+                  ${badgesListHtml}
                 </div>
                 <p class="text-xs text-slate-400 truncate max-w-xl">
                   ${item.desc}
                 </p>
-                ${featuresShort ? `<p class="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium truncate mt-0.5">${featuresShort}</p>` : ''}
               </div>
             </div>
 
-            <div class="flex items-center gap-3 flex-shrink-0" onclick="event.stopPropagation()">
-              <span class="text-xs font-mono text-slate-400 hidden lg:inline-block">${item.url}</span>
+            <div class="flex items-center gap-2 flex-shrink-0" onclick="event.stopPropagation()">
+              <button onclick="abrirModalEditar('${item.id}')" class="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded transition" title="Configurar y cambiar color">
+                <i data-lucide="palette" class="w-3.5 h-3.5"></i>
+              </button>
               <button onclick="abrirModalPreview('${item.url}', '${item.title.replace(/'/g, "\'")}')" class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1">
                 <i data-lucide="eye" class="w-3.5 h-3.5"></i> Vista previa
               </button>
@@ -551,6 +650,143 @@
       }
 
       lucide.createIcons();
+    }
+
+    // GESTIÓN DE DRAG AND DROP NATIVO
+    function handleDragStart(e) {
+      draggedItemIndex = parseInt(this.dataset.index);
+      this.classList.add('card-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedItemIndex);
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      return false;
+    }
+
+    function handleDragEnter() {
+      this.classList.add('card-drag-over');
+    }
+
+    function handleDragLeave() {
+      this.classList.remove('card-drag-over');
+    }
+
+    function handleDrop(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      this.classList.remove('card-drag-over');
+
+      const targetIndex = parseInt(this.dataset.index);
+
+      if (draggedItemIndex !== null && draggedItemIndex !== targetIndex) {
+        // Reordenamos el array de proyectos
+        const movedItem = projects.splice(draggedItemIndex, 1)[0];
+        projects.splice(targetIndex, 0, movedItem);
+
+        // Guardamos el orden en localStorage de este computador
+        guardarEnStorage();
+        renderizarProyectos();
+      }
+      return false;
+    }
+
+    function handleDragEnd() {
+      this.classList.remove('card-dragging');
+      document.querySelectorAll('.card-draggable').forEach(el => el.classList.remove('card-drag-over'));
+      draggedItemIndex = null;
+    }
+
+    // MODAL DE EDICIÓN Y PERSONALIZACIÓN DE COLOR
+    function abrirModalEditar(id) {
+      const item = projects.find(p => p.id === id);
+      if (!item) return;
+
+      document.getElementById('editToolId').value = item.id;
+      document.getElementById('editToolTitle').value = item.title;
+      document.getElementById('editToolDesc').value = item.desc;
+      document.getElementById('editToolColorPicker').value = item.customColor || '#10b981';
+
+      const btnEliminar = document.getElementById('btnEliminarPersonalizada');
+      // Solo permitimos eliminar herramientas que no sean de las 7 base
+      const isBase = DEFAULT_MODULES.some(d => d.id === item.id);
+      if (!isBase) {
+        btnEliminar.classList.remove('hidden');
+      } else {
+        btnEliminar.classList.add('hidden');
+      }
+
+      document.getElementById('editToolModal').classList.remove('hidden');
+    }
+
+    function cerrarModalEditar() {
+      document.getElementById('editToolModal').classList.add('hidden');
+    }
+
+    function aplicarColorRapido(color) {
+      document.getElementById('editToolColorPicker').value = color || '#10b981';
+      document.getElementById('editToolColorPicker').dataset.colorClean = color;
+    }
+
+    function guardarEdicionTarjeta(e) {
+      e.preventDefault();
+      const id = document.getElementById('editToolId').value;
+      const title = document.getElementById('editToolTitle').value.trim();
+      const desc = document.getElementById('editToolDesc').value.trim();
+      const picker = document.getElementById('editToolColorPicker');
+      const color = picker.dataset.colorClean !== undefined ? picker.dataset.colorClean : picker.value;
+      delete picker.dataset.colorClean;
+
+      const item = projects.find(p => p.id === id);
+      if (item) {
+        item.title = title;
+        item.desc = desc;
+        item.customColor = color;
+        guardarEnStorage();
+        renderizarProyectos();
+      }
+      cerrarModalEditar();
+    }
+
+    function eliminarTarjetaPersonalizada() {
+      const id = document.getElementById('editToolId').value;
+      if (confirm("¿Estás seguro de que deseas eliminar esta herramienta de tu Hub?")) {
+        projects = projects.filter(p => p.id !== id);
+        guardarEnStorage();
+        renderizarProyectos();
+        cerrarModalEditar();
+      }
+    }
+
+    // REGISTRAR NUEVA HERRAMIENTA (LLEVA AUTOMÁTICAMENTE LA ETIQUETA "NEW")
+    function abrirModalNuevo() {
+      document.getElementById('newToolModal').classList.remove('hidden');
+    }
+    function cerrarModalNuevo() {
+      document.getElementById('newToolModal').classList.add('hidden');
+      document.getElementById('newToolForm').reset();
+    }
+
+    function guardarNuevoModulo(e) {
+      e.preventDefault();
+      const nuevo = {
+        id: "mod-custom-" + Date.now(),
+        title: document.getElementById('toolTitle').value.trim(),
+        url: document.getElementById('toolUrl').value.trim(),
+        category: document.getElementById('toolCategory').value.trim() || 'General',
+        icon: document.getElementById('toolIcon').value,
+        desc: document.getElementById('toolDesc').value.trim() || 'Herramienta añadida manualmente al hub.',
+        isNew: true,      // Cada nueva herramienta creada lleva la insignia NEW
+        isPrueba: false,
+        customColor: document.getElementById('toolColor').value
+      };
+
+      projects.push(nuevo);
+      guardarEnStorage();
+      renderizarProyectos();
+      cerrarModalNuevo();
     }
 
     function cambiarVista(vista, render = true) {
@@ -603,49 +839,6 @@
       iframe.src = iframe.src;
     }
 
-    // MODAL NUEVO
-    function abrirModalNuevo() {
-      document.getElementById('newToolModal').classList.remove('hidden');
-    }
-    function cerrarModalNuevo() {
-      document.getElementById('newToolModal').classList.add('hidden');
-      document.getElementById('newToolForm').reset();
-    }
-
-    function guardarNuevoModulo(e) {
-      e.preventDefault();
-      const rawFeatures = document.getElementById('toolFeatures').value.trim();
-      const features = rawFeatures ? rawFeatures.split(',').map(f => f.trim()).filter(Boolean) : [];
-
-      const nuevo = {
-        id: "mod-" + Date.now(),
-        title: document.getElementById('toolTitle').value.trim(),
-        url: document.getElementById('toolUrl').value.trim(),
-        category: document.getElementById('toolCategory').value.trim() || 'General',
-        icon: document.getElementById('toolIcon').value,
-        badge: "Personalizado",
-        badgeColor: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700",
-        desc: document.getElementById('toolDesc').value.trim() || 'Herramienta añadida manualmente al hub.',
-        features: features
-      };
-
-      projects.unshift(nuevo);
-      guardarEnStorage();
-      renderizarCategorias();
-      renderizarProyectos();
-      cerrarModalNuevo();
-    }
-
-    // RESPALDO JSON
-    function exportarBackupJSON() {
-      const blob = new Blob([JSON.stringify(projects, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `uapif_hub_backup_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    }
-
     // TEMA OSCURO / CLARO
     function initTheme() {
       const isDark = localStorage.getItem('uapif_hub_theme') === 'dark' || 
@@ -672,6 +865,7 @@
       if (e.key === 'Escape') {
         cerrarModalPreview();
         cerrarModalNuevo();
+        cerrarModalEditar();
       }
     });
 
