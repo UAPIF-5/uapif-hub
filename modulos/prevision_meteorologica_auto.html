@@ -1143,6 +1143,26 @@ ${unidad}`;
     ctx.strokeRect(x0, yTop1, anchoPlot, yBot1 - yTop1);
     ctx.strokeRect(x0, yTop2, anchoPlot, yBot2 - yTop2);
 
+    // Línea de hora actual sincronizada (dibujada en capa de fondo para no tapar textos ni puntos)
+    const xActual = getX(0);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(192, 57, 43, 0.45)';
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(xActual, yTop1);
+    ctx.lineTo(xActual, yBot1);
+    ctx.moveTo(xActual, yTop2);
+    ctx.lineTo(xActual, yBot2);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(xActual - 24, yTop1 - 36, 48, 16);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px Arial';
+    ctx.fillText('AHORA', xActual - 18, yTop1 - 24);
+
     // --- PANEL 1: T / HR (con margen interno superior e inferior de 24px) ---
     const pad1 = 24;
     const minT = Math.floor(Math.min(...data.map(d => d.temp)) - 1);
@@ -1191,16 +1211,22 @@ ${unidad}`;
     }
     ctx.stroke();
 
-    // Helper para dibujar etiquetas con fondo halo limpio y evitar solapamiento con curvas
-    function dibujarEtiquetaDato(ctx, texto, x, yBase, colorTexto, fontStr) {
+    // Helper para dibujar etiquetas: fondo opaco solo en extremos (primero y último) y contorno blanco sutil en todos
+    function dibujarEtiquetaDato(ctx, texto, x, yBase, colorTexto, fontStr, esExtremo = false) {
       ctx.save();
       ctx.font = fontStr;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const w = ctx.measureText(texto).width + 6;
-      const h = 14;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
-      ctx.fillRect(x - w / 2, yBase - h / 2, w, h);
+      if (esExtremo) {
+        const w = ctx.measureText(texto).width + 6;
+        const h = 14;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x - w / 2, yBase - h / 2, w, h);
+      }
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.strokeText(texto, x, yBase);
       ctx.fillStyle = colorTexto;
       ctx.fillText(texto, x, yBase);
       ctx.restore();
@@ -1245,8 +1271,8 @@ ${unidad}`;
         }
       }
 
-      dibujarEtiquetaDato(ctx, `${data[i].temp.toFixed(1)}°`, x, labelYT, '#922b21', 'bold 11px Arial');
-      dibujarEtiquetaDato(ctx, `${data[i].hr.toFixed(0)}%`, x, labelYH, '#1b4f72', 'bold 10px Arial');
+      dibujarEtiquetaDato(ctx, `${data[i].temp.toFixed(1)}°`, x, labelYT, '#922b21', 'bold 11px Arial', i === 0 || i === n - 1);
+      dibujarEtiquetaDato(ctx, `${data[i].hr.toFixed(0)}%`, x, labelYH, '#1b4f72', 'bold 10px Arial', i === 0 || i === n - 1);
     }
 
     // --- FRANJA DEDICADA PARA LEYENDA PANEL 2 (entre y=461 y y=485, fuera del gráfico) ---
@@ -1347,8 +1373,8 @@ ${unidad}`;
         }
       }
 
-      dibujarEtiquetaDato(ctx, `${data[i].racha.toFixed(0)}`, x, labelYR, '#d35400', 'bold 10px Arial');
-      dibujarEtiquetaDato(ctx, `${data[i].viento.toFixed(0)}`, x, labelYV, '#1e8449', 'bold 10px Arial');
+      dibujarEtiquetaDato(ctx, `${data[i].racha.toFixed(0)}`, x, labelYR, '#d35400', 'bold 10px Arial', i === 0 || i === n - 1);
+      dibujarEtiquetaDato(ctx, `${data[i].viento.toFixed(0)}`, x, labelYV, '#1e8449', 'bold 10px Arial', i === 0 || i === n - 1);
 
       const anguloAvanceRad = ((data[i].dir + 180) % 360) * Math.PI / 180;
       ctx.save();
@@ -1384,24 +1410,7 @@ ${unidad}`;
       ctx.fillText(data[i].hora, x - 15, yBot2 + 17);
     }
 
-    // Línea de hora actual sincronizada
-    const xActual = getX(0);
-    ctx.save();
-    ctx.strokeStyle = '#c0392b';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 4]);
 
-    ctx.beginPath();
-    ctx.moveTo(xActual, yTop1);
-    ctx.lineTo(xActual, yBot2);
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.fillStyle = '#c0392b';
-    ctx.fillRect(xActual - 24, yTop1 - 36, 48, 16);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px Arial';
-    ctx.fillText('AHORA', xActual - 18, yTop1 - 24);
 
     ctx.fillStyle = '#7f8c8d';
     ctx.font = '11px Arial';
