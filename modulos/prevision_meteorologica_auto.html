@@ -914,7 +914,7 @@
       }
 
       // 3. Viento
-      let lineaV = `- V gral: En torno a ${cur.wind_speed_10m.toFixed(1)} km/h`;
+      let lineaV = `- V. gral: En torno a ${cur.wind_speed_10m.toFixed(1)} km/h`;
       if (idxMaxV > idxActual && maxViento > cur.wind_speed_10m) {
         lineaV += ` (Máx esperada: ${maxViento.toFixed(1)} km/h a las ${horaMaxV} hrs)`;
       } else if (limite - idxActual > 4) {
@@ -993,7 +993,7 @@
         if (extras850.length > 0) {
           detalleV850 += ` (${extras850.join(' | ')})`;
         }
-        linea850 = `- hPA 850: ${h850Rounded} mgp (${diffStr}) | Viento en altura: ${detalleV850}
+        linea850 = `- hPa 850: ${h850Rounded} mgp (${diffStr}) | Viento en altura: ${detalleV850}
 `;
       }
 
@@ -1032,11 +1032,11 @@ ${unidad}`;
       .replace(/^Condición sinóptica: (.*)$/m, '*Condición sinóptica:* $1')
       .replace(/^- T: (.*)$/m, '- *T:* $1')
       .replace(/^- HR: (.*)$/m, '- *HR:* $1')
-      .replace(/^- V gral: (.*)$/m, '- *V gral:* $1')
+      .replace(/^- V. gral: (.*)$/m, '- *V gral:* $1')
       .replace(/^- Rachas: (.*)$/m, '- *Rachas:* $1')
       .replace(/^- Dir\. V\.: (.*)$/m, '- *Dir. V.:* $1')
       .replace(/^- Precipitaciones: (.*)$/m, '- *Precipitaciones:* $1')
-      .replace(/^- hPA 850: (.*)$/m, '- *hPA 850:* $1')
+      .replace(/^- hPa 850: (.*)$/m, '- *hPA 850:* $1')
       .replace(/^- HCFM: (.*)$/m, '- *HCFM:* $1')
       .replace(/^(Unidad de .*)$/m, '_$1_');
   }
