@@ -486,27 +486,15 @@
       </div>
 
       <div class="section-divider">Identificación del Incidente</div>
-      <div class="grid-2">
-        <div>
-          <label for="if_codigo">N° Incendio / Código</label>
-          <input type="text" id="if_codigo" placeholder="Ej: F88">
-        </div>
-        <div>
-          <label for="if_nombre">Nombre Incendio / Sector</label>
-          <input type="text" id="if_nombre" placeholder="Ej: QUEBRADA EL CANELILLO">
-        </div>
+      <div>
+        <label for="if_identificacion">Incendio (N° y Nombre / Sector)</label>
+        <input type="text" id="if_identificacion" placeholder="Ej: F88 - QUEBRADA EL CANELILLO">
       </div>
 
       <div class="section-divider">Posicionamiento Geográfico</div>
-      <div class="grid-2">
-        <div>
-          <label for="lat">Latitud</label>
-          <input type="number" step="any" id="lat" placeholder="-33.05" oninput="actualizarMarcadorDesdeInputs()">
-        </div>
-        <div>
-          <label for="lon">Longitud</label>
-          <input type="number" step="any" id="lon" placeholder="-71.55" oninput="actualizarMarcadorDesdeInputs()">
-        </div>
+      <div>
+        <label for="coordenadas">Coordenadas (Decimal o GMS)</label>
+        <input type="text" id="coordenadas" placeholder="Ej: -33.05, -71.55  o  32°51'42.1&quot;S 71°06'54.5&quot;W" oninput="actualizarMarcadorDesdeInputs()">
       </div>
 
       <div>
@@ -613,28 +601,67 @@
 
     marcador.on('dragend', function (e) {
       const coord = e.target.getLatLng();
-      document.getElementById('lat').value = coord.lat.toFixed(5);
-      document.getElementById('lon').value = coord.lng.toFixed(5);
+      document.getElementById('coordenadas').value = `${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`;
       if (marcadorViento) marcadorViento.setLatLng(coord);
     });
 
     mapa.on('click', function (e) {
       const coord = e.latlng;
       marcador.setLatLng(coord);
-      document.getElementById('lat').value = coord.lat.toFixed(5);
-      document.getElementById('lon').value = coord.lng.toFixed(5);
+      document.getElementById('coordenadas').value = `${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`;
       if (marcadorViento) marcadorViento.setLatLng(coord);
     });
   });
 
-  function actualizarMarcadorDesdeInputs() {
-    const lat = parseFloat(document.getElementById('lat').value);
-    const lon = parseFloat(document.getElementById('lon').value);
+  function parsearCoordenadas(texto) {
+    if (!texto || typeof texto !== 'string') return null;
+    const limpio = texto.trim();
+    if (!limpio) return null;
 
-    if (!isNaN(lat) && !isNaN(lon) && mapa && marcador) {
-      marcador.setLatLng([lat, lon]);
-      if (marcadorViento) marcadorViento.setLatLng([lat, lon]);
-      mapa.panTo([lat, lon]);
+    // 1. Intentar formato Grados, Minutos, Segundos (GMS), ej: 32°51'42.1"S 71°06'54.5"W (con o sin coma, comillas simples/dobles o tipográficas)
+    const regexGMS = /(\d+(?:[.,]\d+)?)\s*[°º]\s*(?:(\d+(?:[.,]\d+)?)\s*['’′]\s*)?(?:(\d+(?:[.,]\d+)?)\s*(?:["”″]|'')\s*)?([NSns])[,\s]+(\d+(?:[.,]\d+)?)\s*[°º]\s*(?:(\d+(?:[.,]\d+)?)\s*['’′]\s*)?(?:(\d+(?:[.,]\d+)?)\s*(?:["”″]|'')\s*)?([EWewOo])/;
+    const matchGMS = limpio.match(regexGMS);
+    if (matchGMS) {
+      const degLat = parseFloat(matchGMS[1].replace(',', '.'));
+      const minLat = matchGMS[2] ? parseFloat(matchGMS[2].replace(',', '.')) : 0;
+      const secLat = matchGMS[3] ? parseFloat(matchGMS[3].replace(',', '.')) : 0;
+      const hemLat = matchGMS[4].toUpperCase();
+
+      const degLon = parseFloat(matchGMS[5].replace(',', '.'));
+      const minLon = matchGMS[6] ? parseFloat(matchGMS[6].replace(',', '.')) : 0;
+      const secLon = matchGMS[7] ? parseFloat(matchGMS[7].replace(',', '.')) : 0;
+      const hemLon = matchGMS[8].toUpperCase();
+
+      let lat = degLat + (minLat / 60) + (secLat / 3600);
+      if (hemLat === 'S') lat = -Math.abs(lat);
+
+      let lon = degLon + (minLon / 60) + (secLon / 3600);
+      if (hemLon === 'W' || hemLon === 'O') lon = -Math.abs(lon);
+
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        return { lat, lon };
+      }
+    }
+
+    // 2. Intentar formato Grados Decimales separados por coma o espacio, ej: -33.05, -71.55
+    const partes = limpio.split(/[,\s]+/).filter(Boolean);
+    if (partes.length === 2) {
+      const lat = parseFloat(partes[0]);
+      const lon = parseFloat(partes[1]);
+      if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        return { lat, lon };
+      }
+    }
+
+    return null;
+  }
+
+  function actualizarMarcadorDesdeInputs() {
+    const parsed = parsearCoordenadas(document.getElementById('coordenadas').value);
+    if (parsed && mapa && marcador) {
+      marcador.setLatLng([parsed.lat, parsed.lon]);
+      if (marcadorViento) marcadorViento.setLatLng([parsed.lat, parsed.lon]);
+      mapa.panTo([parsed.lat, parsed.lon]);
     }
   }
 
@@ -697,10 +724,8 @@
   }
 
   async function generarPrevision() {
-    const latInput = document.getElementById('lat').value.trim();
-    const lonInput = document.getElementById('lon').value.trim();
-    const ifCodigo = document.getElementById('if_codigo').value.trim() || "S/N";
-    const ifNombre = document.getElementById('if_nombre').value.trim() || "SECTOR NO IDENTIFICADO";
+    const coordInput = document.getElementById('coordenadas').value.trim();
+    const ifIdentificacion = document.getElementById('if_identificacion').value.trim() || "S/N - SECTOR NO IDENTIFICADO";
     const sinoptica = document.getElementById('sinoptica').value.trim();
     const recuperacionManual = document.getElementById('recuperacion').value.trim();
     const unidad = "Unidad de Análisis y Predicción de Incendios Forestales Valparaíso";
@@ -708,13 +733,14 @@
     const modeloNombre = modeloSeleccionadoNom;
     const salida = document.getElementById('salida');
 
-    if (!latInput || !lonInput) {
-      alert("Por favor ingresa latitud y longitud o selecciónalas en el mapa.");
+    const parsedCoord = parsearCoordenadas(coordInput);
+    if (!parsedCoord) {
+      alert("Por favor ingresa coordenadas válidas (Ej: -33.05, -71.55 o 32°51'42.1\"S 71°06'54.5\"W) o selecciónalas en el mapa.");
       return;
     }
 
-    const lat = parseFloat(latInput);
-    const lon = parseFloat(lonInput);
+    const lat = Number(parsedCoord.lat.toFixed(5));
+    const lon = Number(parsedCoord.lon.toFixed(5));
 
     if (mapa && marcador) {
       marcador.setLatLng([lat, lon]);
@@ -887,8 +913,7 @@
       }
 
       datosUltimoCalculo = {
-        ifCodigo,
-        ifNombre,
+        ifIdentificacion,
         lat,
         lon,
         cota: Math.round(cotaRealDEM),
@@ -993,7 +1018,7 @@
         if (extras850.length > 0) {
           detalleV850 += ` (${extras850.join(' | ')})`;
         }
-        linea850 = `- hPa 850: ${h850Rounded} mgp (${diffStr}) | Viento en altura: ${detalleV850}
+        linea850 = `- 850 hPa: ${h850Rounded} mgp (${diffStr}) | Viento en altura: ${detalleV850}
 `;
       }
 
@@ -1007,7 +1032,7 @@
 
       // Texto de despacho final (GFS y Cota en título, sin línea de Modelo separada, sin línea en blanco entre fecha y cuerpo)
       const textoFinal = 
-`PREVISIÓN METEOROLÓGICA – IF N° ${ifCodigo} - ${ifNombre.toUpperCase()} (${modeloNombre} Cota: ${cotaRealDEM.toFixed(0)} msnm)
+`PREVISIÓN METEOROLÓGICA – IF ${ifIdentificacion.toUpperCase()} (${modeloNombre} Cota: ${cotaRealDEM.toFixed(0)} msnm)
 FECHA: ${fechaTexto}
 ${bloqueSinoptica}
 ${lineaT}
@@ -1032,11 +1057,11 @@ ${unidad}`;
       .replace(/^Condición sinóptica: (.*)$/m, '*Condición sinóptica:* $1')
       .replace(/^- T: (.*)$/m, '- *T:* $1')
       .replace(/^- HR: (.*)$/m, '- *HR:* $1')
-      .replace(/^- V. gral: (.*)$/m, '- *V gral:* $1')
+      .replace(/^- V\. gral: (.*)$/m, '- *V. gral:* $1')
       .replace(/^- Rachas: (.*)$/m, '- *Rachas:* $1')
       .replace(/^- Dir\. V\.: (.*)$/m, '- *Dir. V.:* $1')
       .replace(/^- Precipitaciones: (.*)$/m, '- *Precipitaciones:* $1')
-      .replace(/^- hPa 850: (.*)$/m, '- *hPA 850:* $1')
+      .replace(/^- 850 hPa: (.*)$/m, '- *850 hPa:* $1')
       .replace(/^- HCFM: (.*)$/m, '- *HCFM:* $1')
       .replace(/^(Unidad de .*)$/m, '_$1_');
   }
@@ -1077,7 +1102,7 @@ ${unidad}`;
 
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 22px Arial, sans-serif';
-    ctx.fillText(`METEOGRAMA OPERATIVO – IF N° ${datosUltimoCalculo.ifCodigo} - ${datosUltimoCalculo.ifNombre.toUpperCase()}`, 30, 36);
+    ctx.fillText(`METEOGRAMA OPERATIVO – IF ${datosUltimoCalculo.ifIdentificacion.toUpperCase()}`, 30, 36);
 
     ctx.font = '13px Arial, sans-serif';
     ctx.fillStyle = '#fbeee6';
@@ -1441,7 +1466,8 @@ ${unidad}`;
   function ejecutarDescargaPNG() {
     if (!urlImagenMeteograma) return;
     const enlace = document.createElement('a');
-    enlace.download = `Meteograma_IF_${datosUltimoCalculo.ifCodigo}_${Date.now()}.png`;
+    const slugIF = datosUltimoCalculo.ifIdentificacion.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_|_$/g, '');
+    enlace.download = `Meteograma_IF_${slugIF || 'SIN_ID'}_${Date.now()}.png`;
     enlace.href = urlImagenMeteograma;
     enlace.click();
   }
