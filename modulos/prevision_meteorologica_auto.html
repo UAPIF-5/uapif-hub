@@ -350,10 +350,14 @@
     }
 
     .btn-meteograma {
-      grid-column: span 2;
       background: #2c3e50;
     }
     .btn-meteograma:hover { background: #1a252f; }
+
+    .btn-meteograma-viento {
+      background: #1e40af;
+    }
+    .btn-meteograma-viento:hover { background: #1e3a8a; }
 
     /* MODAL DE PREVISUALIZACIÓN */
     .modal-backdrop {
@@ -543,7 +547,8 @@
       <div class="actions-grid">
         <button id="btn-copy-normal" class="btn-action btn-copy" onclick="copiarTexto(false)">Copiar Normal</button>
         <button id="btn-copy-wsp" class="btn-action btn-whatsapp" onclick="copiarTexto(true)">Copiar WhatsApp (*)</button>
-        <button class="btn-action btn-meteograma" onclick="abrirModalMeteograma()">Previsualizar y Descargar Meteograma</button>
+        <button class="btn-action btn-meteograma" onclick="abrirModalMeteograma('general')">Meteograma Operativo</button>
+        <button class="btn-action btn-meteograma-viento" onclick="abrirModalMeteograma('viento')">Meteograma de Viento</button>
       </div>
     </section>
 
@@ -555,7 +560,7 @@
 <div class="modal-backdrop" id="modalMeteograma">
   <div class="modal-box">
     <div class="modal-header">
-      <span>Previsualización del Meteograma Operativo</span>
+      <span id="modalTituloMeteograma">Previsualización del Meteograma Operativo</span>
       <button class="modal-close-btn" onclick="cerrarModalMeteograma()">&times;</button>
     </div>
     <div class="modal-body">
@@ -850,6 +855,12 @@
         const vC = Number(hourly.wind_speed_10m[i].toFixed(1));
         const rC = Number(hourly.wind_gusts_10m[i].toFixed(1));
         const dC = hourly.wind_direction_10m[i];
+        const v850Val = (hourly.wind_speed_850hPa && hourly.wind_speed_850hPa[i] !== undefined && hourly.wind_speed_850hPa[i] !== null)
+          ? Number(hourly.wind_speed_850hPa[i].toFixed(1)) : null;
+        const d850Val = (hourly.wind_direction_850hPa && hourly.wind_direction_850hPa[i] !== undefined && hourly.wind_direction_850hPa[i] !== null)
+          ? hourly.wind_direction_850hPa[i] : null;
+        const h850Val = (hourly.geopotential_height_850hPa && hourly.geopotential_height_850hPa[i] !== undefined && hourly.geopotential_height_850hPa[i] !== null)
+          ? Math.round(hourly.geopotential_height_850hPa[i]) : null;
 
         const esNoche = (horaEntera >= 21 || horaEntera < 7);
 
@@ -860,6 +871,9 @@
           viento: vC,
           racha: rC,
           dir: dC,
+          viento850: v850Val,
+          dir850: d850Val,
+          h850: h850Val,
           esActual: (i === idxActual),
           esNoche: esNoche
         });
@@ -1444,13 +1458,399 @@ ${unidad}`;
     urlImagenMeteograma = c.toDataURL('image/png');
   }
 
-  function abrirModalMeteograma() {
+  let tipoMeteogramaActual = 'general';
+
+  function generarCanvasMeteogramaViento() {
+    const c = document.getElementById('meteogramaCanvas');
+    const ctx = c.getContext('2d');
+    const data = datosUltimoCalculo.timeline;
+    const n = data.length;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    // 1. Cabecera técnica azul oscuro operacional
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(0, 0, c.width, 70);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px Arial, sans-serif';
+    ctx.fillText(`METEOGRAMA DE VIENTO – IF ${datosUltimoCalculo.ifIdentificacion.toUpperCase()}`, 30, 36);
+
+    const h850Act = data[0].h850;
+    const diffZ = h850Act !== null ? (h850Act - datosUltimoCalculo.cota) : null;
+    const info850 = h850Act !== null ? ` | Nivel 850 hPa: ~${h850Act} mgp (${diffZ >= 0 ? '+' + diffZ : diffZ} m sobre cota IF)` : '';
+
+    ctx.font = '13px Arial, sans-serif';
+    ctx.fillStyle = '#dbeafe';
+    ctx.fillText(`Coord: ${datosUltimoCalculo.lat}, ${datosUltimoCalculo.lon} | Cota IF: ${datosUltimoCalculo.cota} msnm${info850} | Modelo: ${datosUltimoCalculo.modelo}`, 30, 58);
+
+    const x0 = 85;
+    const x1 = 1135;
+    const anchoPlot = x1 - x0;
+    const pasoX = anchoPlot / (n - 1);
+    const getX = i => x0 + i * pasoX;
+
+    // Regla horaria superior
+    const yReglaSuperior = 104;
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 12px Arial, sans-serif';
+    for (let i = 0; i < n; i++) {
+      const x = getX(i);
+      ctx.fillText(data[i].hora, x - 16, yReglaSuperior);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, yReglaSuperior + 4);
+      ctx.lineTo(x, yReglaSuperior + 10);
+      ctx.stroke();
+    }
+
+    // Franja dedicada para leyenda superior (y=116 a y=144)
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(x0, 116, anchoPlot, 28);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x0, 116, anchoPlot, 28);
+
+    ctx.font = 'bold 12px Arial, sans-serif';
+    ctx.fillStyle = '#2563eb';
+    ctx.fillText('▲— Viento en Altura 850 hPa (km/h)', x0 + 16, 134);
+    ctx.fillStyle = '#e67e22';
+    ctx.fillText('▲- - Rachas Superficie (km/h)', x0 + 285, 134);
+    ctx.fillStyle = '#16a34a';
+    ctx.fillText('▲— Viento General 10m (km/h)', x0 + 515, 134);
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('▒ Sombreado: Periodo Nocturno', x0 + 750, 134);
+
+    // Panel Principal Comparativo (y=144 a y=535)
+    const yTop1 = 144, yBot1 = 535;
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(x0, yTop1, anchoPlot, yBot1 - yTop1);
+
+    // Sombreado nocturno
+    for (let i = 0; i < n; i++) {
+      if (data[i].esNoche) {
+        const xIni = Math.max(x0, getX(i) - pasoX / 2);
+        const xFin = Math.min(x1, getX(i) + pasoX / 2);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.05)';
+        ctx.fillRect(xIni, yTop1, xFin - xIni, yBot1 - yTop1);
+      }
+    }
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x0, yTop1, anchoPlot, yBot1 - yTop1);
+
+    // Línea AHORA
+    const xActual = getX(0);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(192, 57, 43, 0.5)';
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(xActual, yTop1);
+    ctx.lineTo(xActual, 755);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(xActual - 24, yTop1 - 36, 48, 16);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px Arial';
+    ctx.fillText('AHORA', xActual - 18, yTop1 - 24);
+
+    // Escala Y unificada para velocidades (km/h)
+    const todosVientos = [
+      ...data.map(d => d.racha || 0),
+      ...data.map(d => d.viento || 0),
+      ...data.map(d => d.viento850 || 0),
+      30
+    ];
+    const maxV = Math.ceil(Math.max(...todosVientos) / 10) * 10;
+    const pasoV = maxV > 80 ? 20 : 10;
+    const padTop = 26;
+    const padBot = 24;
+    const getYV = v => (yBot1 - padBot) - (v / maxV) * (yBot1 - yTop1 - padTop - padBot);
+
+    for (let v = 0; v <= maxV; v += pasoV) {
+      const y = getYV(v);
+      ctx.beginPath();
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.stroke();
+
+      ctx.fillStyle = '#475569';
+      ctx.font = 'bold 11px Arial';
+      ctx.fillText(`${v}`, x0 - 32, y + 4);
+    }
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 11px Arial';
+    ctx.fillText('km/h', x0 - 45, yTop1 + 15);
+
+    // Área sombreada sutil entre Viento General y Rachas (banda de turbulencia superficial)
+    ctx.save();
+    ctx.fillStyle = 'rgba(230, 126, 34, 0.10)';
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const x = getX(i);
+      const y = getYV(data[i].racha);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    for (let i = n - 1; i >= 0; i--) {
+      const x = getX(i);
+      const y = getYV(data[i].viento);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Curva 1: Viento 850 hPa (Azul)
+    ctx.beginPath();
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 3.2;
+    let started850 = false;
+    for (let i = 0; i < n; i++) {
+      if (data[i].viento850 !== null) {
+        const x = getX(i);
+        const y = getYV(data[i].viento850);
+        if (!started850) { ctx.moveTo(x, y); started850 = true; } else { ctx.lineTo(x, y); }
+      }
+    }
+    ctx.stroke();
+
+    // Curva 2: Rachas Superficie (Naranja discontinua)
+    ctx.beginPath();
+    ctx.strokeStyle = '#e67e22';
+    ctx.lineWidth = 2.6;
+    ctx.setLineDash([5, 3]);
+    for (let i = 0; i < n; i++) {
+      const x = getX(i);
+      const y = getYV(data[i].racha);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Curva 3: Viento General 10m (Verde)
+    ctx.beginPath();
+    ctx.strokeStyle = '#16a34a';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < n; i++) {
+      const x = getX(i);
+      const y = getYV(data[i].viento);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    function dibujarEtiqueta(texto, x, yBase, colorTexto, fontStr) {
+      ctx.save();
+      ctx.font = fontStr;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.strokeText(texto, x, yBase);
+      ctx.fillStyle = colorTexto;
+      ctx.fillText(texto, x, yBase);
+      ctx.restore();
+    }
+
+    function dibujarMarcadorFlechaLinea(x, yCenter, dirGrados, colorFlecha, escala = 0.72) {
+      if (dirGrados === null || dirGrados === undefined) {
+        ctx.fillStyle = colorFlecha;
+        ctx.beginPath();
+        ctx.arc(x, yCenter, 4, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+      }
+      const rad = ((dirGrados + 180) % 360) * Math.PI / 180;
+      ctx.save();
+      ctx.translate(x, yCenter);
+      ctx.rotate(rad);
+      ctx.scale(escala, escala);
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 2.4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = colorFlecha;
+      ctx.beginPath();
+      ctx.moveTo(0, -13);
+      ctx.lineTo(7, 8);
+      ctx.lineTo(0, 4);
+      ctx.lineTo(-7, 8);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Marcadores direccionales (flechas) y etiquetas ordenadas verticalmente sin solapamiento
+    for (let i = 0; i < n; i++) {
+      const x = getX(i);
+      const items = [];
+
+      if (data[i].viento850 !== null) {
+        const y850 = getYV(data[i].viento850);
+        dibujarMarcadorFlechaLinea(x, y850, data[i].dir850, '#1d4ed8', 0.78);
+        items.push({ val: data[i].viento850, y: y850, color: '#1e3a8a', labelY: y850 - 13 });
+      }
+
+      const yR = getYV(data[i].racha);
+      dibujarMarcadorFlechaLinea(x, yR, data[i].dir, '#e67e22', 0.72);
+      items.push({ val: data[i].racha, y: yR, color: '#b45309', labelY: yR - 12 });
+
+      const yV = getYV(data[i].viento);
+      dibujarMarcadorFlechaLinea(x, yV, data[i].dir, '#16a34a', 0.74);
+      items.push({ val: data[i].viento, y: yV, color: '#15803d', labelY: yV + 14 });
+
+      // Ordenar de arriba hacia abajo (menor Y a mayor Y) y separar si están muy cerca
+      items.sort((a, b) => a.y - b.y);
+      if (items.length === 3) {
+        items[0].labelY = Math.max(yTop1 + 11, items[0].y - 12);
+        items[2].labelY = Math.min(yBot1 - 11, items[2].y + 13);
+        items[1].labelY = items[1].y - 11;
+        if (items[1].labelY - items[0].labelY < 13) {
+          items[1].labelY = items[0].labelY + 13;
+        }
+        if (items[2].labelY - items[1].labelY < 13) {
+          items[1].labelY = (items[0].labelY + items[2].labelY) / 2;
+        }
+      } else if (items.length === 2) {
+        items[0].labelY = Math.max(yTop1 + 11, items[0].y - 12);
+        items[1].labelY = Math.min(yBot1 - 11, items[1].y + 13);
+      }
+
+      for (const it of items) {
+        dibujarEtiqueta(`${it.val.toFixed(0)}`, x, it.labelY, it.color, 'bold 10px Arial');
+      }
+    }
+
+    // --- PANEL 2 DIDÁCTICO: COMPARACIÓN DIRECCIONAL (850 hPa vs SUPERFICIE) ---
+    const yBarTitle = 552;
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(x0, yBarTitle, anchoPlot, 24);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px Arial, sans-serif';
+    ctx.fillText('COMPARACIÓN DIRECCIONAL: FLUJO EN ALTURA (850 hPa) vs SUPERFICIE (10m)', x0 + 14, yBarTitle + 16);
+
+    const yDirBoxTop = yBarTitle + 24;
+    const yDirBoxMid = yDirBoxTop + 90;
+    const yDirBoxBot = yDirBoxMid + 90;
+
+    // Fila 850 hPa
+    ctx.fillStyle = '#eff6ff';
+    ctx.fillRect(x0, yDirBoxTop, anchoPlot, 90);
+    ctx.strokeStyle = '#bfdbfe';
+    ctx.strokeRect(x0, yDirBoxTop, anchoPlot, 90);
+
+    // Fila Superficie 10m
+    ctx.fillStyle = '#f0fdf4';
+    ctx.fillRect(x0, yDirBoxMid, anchoPlot, 90);
+    ctx.strokeStyle = '#bbf7d0';
+    ctx.strokeRect(x0, yDirBoxMid, anchoPlot, 90);
+
+    // Etiquetas laterales de fila
+    ctx.save();
+    ctx.fillStyle = '#1e3a8a';
+    ctx.font = 'bold 11px Arial';
+    ctx.fillText('850 hPa', x0 - 52, yDirBoxTop + 42);
+    ctx.font = '10px Arial';
+    ctx.fillText('(Altura)', x0 - 50, yDirBoxTop + 56);
+
+    ctx.fillStyle = '#15803d';
+    ctx.font = 'bold 11px Arial';
+    ctx.fillText('10 m', x0 - 44, yDirBoxMid + 42);
+    ctx.font = '10px Arial';
+    ctx.fillText('(Sup.)', x0 - 46, yDirBoxMid + 56);
+    ctx.restore();
+
+    function dibujarVectorFlecha(x, yCenter, dirGrados, colorFlecha) {
+      if (dirGrados === null || dirGrados === undefined) return;
+      const rad = ((dirGrados + 180) % 360) * Math.PI / 180;
+      ctx.save();
+      ctx.translate(x, yCenter);
+      ctx.rotate(rad);
+      ctx.fillStyle = colorFlecha;
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(7, 9);
+      ctx.lineTo(0, 4);
+      ctx.lineTo(-7, 9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    for (let i = 0; i < n; i++) {
+      const x = getX(i);
+
+      // Vector y texto 850 hPa
+      if (data[i].dir850 !== null) {
+        dibujarVectorFlecha(x, yDirBoxTop + 34, data[i].dir850, '#1d4ed8');
+        ctx.fillStyle = '#1e3a8a';
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(rumboCardinal(data[i].dir850), x, yDirBoxTop + 62);
+        ctx.font = '10px Arial';
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillText(`${Math.round(data[i].dir850)}°`, x, yDirBoxTop + 76);
+      } else {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('S/D', x, yDirBoxTop + 48);
+      }
+
+      // Vector y texto Superficie
+      dibujarVectorFlecha(x, yDirBoxMid + 34, data[i].dir, '#15803d');
+      ctx.fillStyle = '#14532d';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(rumboCardinal(data[i].dir), x, yDirBoxMid + 62);
+      ctx.font = '10px Arial';
+      ctx.fillStyle = '#16a34a';
+      ctx.fillText(`${Math.round(data[i].dir)}°`, x, yDirBoxMid + 76);
+
+      // Eje horario inferior
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 11px Arial, sans-serif';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, yDirBoxBot);
+      ctx.lineTo(x, yDirBoxBot + 5);
+      ctx.stroke();
+      ctx.fillText(data[i].hora, x - 15, yDirBoxBot + 17);
+    }
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px Arial';
+    ctx.fillText(`Emitido: ${datosUltimoCalculo.fechaTexto} hrs | UAPIF Valparaíso - Análisis Vertical de Viento (Superficie vs 850 hPa)`, 30, 810);
+
+    urlImagenMeteograma = c.toDataURL('image/png');
+  }
+
+  function abrirModalMeteograma(tipo = 'general') {
     if (!datosUltimoCalculo || !datosUltimoCalculo.timeline || datosUltimoCalculo.timeline.length === 0) {
       alert("Primero debes presionar 'Generar Previsión' para obtener los datos meteorológicos.");
       return;
     }
 
-    generarCanvasMeteograma();
+    tipoMeteogramaActual = tipo;
+    const tituloModal = document.getElementById('modalTituloMeteograma');
+    if (tipo === 'viento') {
+      tituloModal.innerText = 'Previsualización: Meteograma de Viento';
+      generarCanvasMeteogramaViento();
+    } else {
+      tituloModal.innerText = 'Previsualización del Meteograma Operativo';
+      generarCanvasMeteograma();
+    }
+
     const imgPreview = document.getElementById('imgPreviewMeteograma');
     imgPreview.src = urlImagenMeteograma;
 
@@ -1467,7 +1867,8 @@ ${unidad}`;
     if (!urlImagenMeteograma) return;
     const enlace = document.createElement('a');
     const slugIF = datosUltimoCalculo.ifIdentificacion.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_|_$/g, '');
-    enlace.download = `Meteograma_IF_${slugIF || 'SIN_ID'}_${Date.now()}.png`;
+    const prefijo = tipoMeteogramaActual === 'viento' ? 'Meteograma_Viento_850hPa_IF_' : 'Meteograma_IF_';
+    enlace.download = `${prefijo}${slugIF || 'SIN_ID'}_${Date.now()}.png`;
     enlace.href = urlImagenMeteograma;
     enlace.click();
   }
