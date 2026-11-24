@@ -172,7 +172,7 @@
         <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-black text-[10px]">🖐️</span>
         <span><b>Arrastra y suelta</b> cualquier tarjeta para reordenarla como quieras. Tu configuración y colores quedan guardados en este computador.</span>
       </div>
-      <span id="counterText" class="font-medium whitespace-nowrap">7 herramientas activas</span>
+      <span id="counterText" class="font-medium whitespace-nowrap">8 herramientas activas</span>
     </div>
 
     <!-- CONTENEDOR DE TARJETAS / LISTA (DRAGGABLE) -->
@@ -307,6 +307,7 @@
               <option value="radio">radio (Transmisión / Radio)</option>
               <option value="cloud-sun">cloud-sun (Meteorología)</option>
               <option value="cpu">cpu (Automático / Computacional)</option>
+              <option value="image">image (Infografía / Gráficos)</option>
             </select>
           </div>
         </div>
@@ -405,8 +406,19 @@
         url: "./modulos/prevision_meteorologica_auto.html",
         icon: "cpu",
         desc: "Generador automatizado de despachos técnicos de incendios forestales mediante conexión directa a Open-Meteo API v1 y corrección DEM.",
+        isNew: false,
+        isPrueba: true,   // Mantiene etiqueta EN PRUEBA
+        customColor: ""
+      },
+      {
+        id: "mod-8",
+        title: "Generador de Infografía Meteorológica IF",
+        category: "Pronóstico y Alertas",
+        url: "./modulos/generador_infografia_meteo.html",
+        icon: "image",
+        desc: "Generador de infografías operativas (1080×1350 px) a escala regional, provincial o comunal con pronóstico automático Open-Meteo, ajuste DEM y exportación PNG.",
         isNew: true,      // Lleva NEW en la esquina
-        isPrueba: true,   // Lleva etiqueta de prueba
+        isPrueba: false,
         customColor: ""
       }
     ];
@@ -431,7 +443,15 @@
             projects.push(p);
           });
 
-          // Agregar por si falta alguna de DEFAULT_MODULES
+          // Sincronizar badges oficiales (isNew / isPrueba) y agregar módulos nuevos si faltan
+          const defMap = new Map(DEFAULT_MODULES.map(d => [d.id, d]));
+          projects.forEach(p => {
+            if (defMap.has(p.id)) {
+              const def = defMap.get(p.id);
+              p.isNew = def.isNew;
+              p.isPrueba = def.isPrueba;
+            }
+          });
           DEFAULT_MODULES.forEach(def => {
             if (!idsMap.has(def.id)) {
               projects.push({...def});
@@ -783,6 +803,7 @@
         customColor: document.getElementById('toolColor').value
       };
 
+      projects.forEach(p => { p.isNew = false; });
       projects.push(nuevo);
       guardarEnStorage();
       renderizarProyectos();
